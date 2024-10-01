@@ -112,8 +112,6 @@ def main():
     parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
     parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
     parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
-    parser.add_argument('--spark_jars_packages', default="com.databricks:spark-xml_2.12:0.18.0",
-                        help="Spark package for external libraries")
 
     args = parser.parse_args()
 

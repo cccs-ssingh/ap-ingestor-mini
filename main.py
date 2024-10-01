@@ -8,9 +8,9 @@ from pyspark.sql import SparkSession
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-# Function to create Spark session with Iceberg support
+# Function to create Spark session with Iceberg and XML support
 def create_spark_session(warehouse_dir, k8s_mode, driver_config):
-    logging.info("Creating Spark session for Iceberg.")
+    logging.info("Creating Spark session for Iceberg and XML support.")
 
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
@@ -22,7 +22,8 @@ def create_spark_session(warehouse_dir, k8s_mode, driver_config):
         .config("spark.sql.files.maxPartitionBytes", driver_config.get("spark.sql.files.maxPartitionBytes", "512m")) \
         .config("spark.executor.memory", driver_config.get("spark.executor.memory", "4g")) \
         .config("spark.executor.cores", driver_config.get("spark.executor.cores", "4")) \
-        .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1"))
+        .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1")) \
+        .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
 
     if k8s_mode:
         logging.info("Configuring Spark for Kubernetes mode.")
@@ -111,6 +112,8 @@ def main():
     parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
     parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
     parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
+    parser.add_argument('--spark_jars_packages', default="com.databricks:spark-xml_2.12:0.18.0",
+                        help="Spark package for external libraries")
 
     args = parser.parse_args()
 
@@ -119,7 +122,8 @@ def main():
         "spark.sql.files.maxPartitionBytes": args.spark_sql_files_maxPartitionBytes,
         "spark.executor.memory": args.spark_executor_memory,
         "spark.executor.cores": args.spark_executor_cores,
-        "spark.executor.instances": args.spark_executor_instances
+        "spark.executor.instances": args.spark_executor_instances,
+        "spark.jars.packages": args.spark_jars_packages
     }
 
     # Create Spark session with driver configs and Kubernetes mode support

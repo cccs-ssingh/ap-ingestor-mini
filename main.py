@@ -1,0 +1,147 @@
+import os
+import argparse
+import logging
+from azure.storage.blob import BlobServiceClient
+from pyspark.sql import SparkSession
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+# Function to create Spark session with Iceberg support
+def create_spark_session(warehouse_dir, k8s_mode, driver_config):
+    logging.info("Creating Spark session for Iceberg.")
+
+    # Basic Spark session configuration
+    spark_builder = SparkSession.builder \
+        .appName("Iceberg Ingestion") \
+        .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+        .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
+        .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_dir) \
+        .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
+        .config("spark.sql.files.maxPartitionBytes", driver_config.get("spark.sql.files.maxPartitionBytes", "512m")) \
+        .config("spark.executor.memory", driver_config.get("spark.executor.memory", "4g")) \
+        .config("spark.executor.cores", driver_config.get("spark.executor.cores", "4")) \
+        .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1"))
+
+    if k8s_mode:
+        logging.info("Configuring Spark for Kubernetes mode.")
+        spark_builder = spark_builder \
+            .config("spark.master", "k8s://https://kubernetes.default.svc") \
+            .config("spark.kubernetes.container.image", "your-kubernetes-spark-image") \
+            .config("spark.kubernetes.namespace", "your-namespace") \
+            .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
+
+    spark = spark_builder.getOrCreate()
+    return spark
+
+
+# Function to list blobs in a directory from Azure Blob Storage using connection string
+def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
+    logging.info(f"Listing blobs from container '{container_name}' in directory '{raw_data_dir}'")
+    blob_service_client = BlobServiceClient.from_connection_string(conn_str)
+    container_client = blob_service_client.get_container_client(container_name)
+
+    blobs = container_client.list_blobs(name_starts_with=raw_data_dir)
+    blob_urls = []
+
+    for blob in blobs:
+        blob_url = f"https://{container_client.account_name}.blob.core.windows.net/{container_name}/{blob.name}"
+        blob_urls.append(blob_url)
+
+    return blob_urls
+
+
+# Function to read data based on the file type
+def read_data(spark, input_files, file_type, xml_row_tag=None):
+    logging.info(f"Reading data from input files with file type: {file_type}")
+
+    if file_type == "csv":
+        df = spark.read.option("header", "true").csv(input_files)
+    elif file_type == "parquet":
+        df = spark.read.parquet(input_files)
+    elif file_type == "json":
+        df = spark.read.json(input_files)
+    elif file_type == "xml":
+        if not xml_row_tag:
+            raise ValueError("For XML format, 'xml_row_tag' must be provided.")
+        df = (
+            spark.read.format("xml")
+            .option("rowTag", xml_row_tag)
+            .load(input_files)
+        )
+    elif file_type == "avro":
+        df = spark.read.format("avro").load(input_files)
+    else:
+        raise ValueError(f"Unsupported file type: {file_type}")
+
+    return df
+
+
+# Function to ingest raw data into an Iceberg table dynamically
+def ingest_to_iceberg(spark, input_files, datafeed, file_type, xml_row_tag=None):
+    # Read the data based on the file type
+    df = read_data(spark, input_files, file_type, xml_row_tag)
+
+    logging.info(f"Ingesting data into Iceberg table: {datafeed}")
+    df.writeTo(f"spark_catalog.{datafeed}") \
+        .option("merge-schema", "true") \
+        .createOrReplace()
+
+
+# Main function
+def main():
+    parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
+    parser.add_argument('--conn_str', required=True, help="Azure Storage connection string")
+    parser.add_argument('--data_container_name', default="data",
+                        help="Azure Storage container name for raw data (default: 'data')")
+    parser.add_argument('--raw_data_dir', required=True, help="Raw data directory in Azure Storage")
+    parser.add_argument('--datafeed', required=True, help="Target Iceberg table name")
+    parser.add_argument('--warehouse_container_name', default="warehouse",
+                        help="Azure Storage container name for Iceberg warehouse (default: 'warehouse')")
+    parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
+    parser.add_argument('--file_type', required=True,
+                        help="File type of the raw data (e.g., 'csv', 'parquet', 'json', 'xml', 'avro')")
+    parser.add_argument('--xml_row_tag', help="Row tag to use for XML format (only required if file_type is 'xml')")
+    parser.add_argument('--k8s_mode', action='store_true', help="Enable Kubernetes mode for Spark")
+
+    # Driver config arguments for Spark
+    parser.add_argument('--spark_sql_files_maxPartitionBytes', default="512m",
+                        help="Max partition bytes for Spark SQL files")
+    parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
+    parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
+    parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
+
+    args = parser.parse_args()
+
+    # Create driver configuration dictionary
+    driver_config = {
+        "spark.sql.files.maxPartitionBytes": args.spark_sql_files_maxPartitionBytes,
+        "spark.executor.memory": args.spark_executor_memory,
+        "spark.executor.cores": args.spark_executor_cores,
+        "spark.executor.instances": args.spark_executor_instances
+    }
+
+    # Create Spark session with driver configs and Kubernetes mode support
+    warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
+    spark = create_spark_session(warehouse_url, args.k8s_mode, driver_config)
+
+    # List the files from the Azure directory (data container)
+    input_files = list_blobs_in_directory(
+        conn_str=args.conn_str,
+        container_name=args.data_container_name,
+        raw_data_dir=args.raw_data_dir
+    )
+
+    if not input_files:
+        logging.warning("No files found in the specified directory.")
+        return
+
+    # Ingest files into Iceberg table
+    ingest_to_iceberg(spark, input_files, args.datafeed, args.file_type, args.xml_row_tag)
+
+    logging.info(f"Successfully ingested data into Iceberg table: {args.datafeed}")
+
+
+if __name__ == "__main__":
+    main()

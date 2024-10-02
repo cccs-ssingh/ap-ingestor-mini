@@ -20,6 +20,8 @@ def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config,
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion") \
+        .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
+        .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", conn_str) \
         .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
         .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
         .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_dir) \
@@ -29,6 +31,9 @@ def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config,
         .config("spark.executor.cores", driver_config.get("spark.executor.cores", "4")) \
         .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1")) \
         .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
+
+    # Set log level to ERROR to minimize logging
+    spark_builder.sparkContext.setLogLevel("ERROR")
 
     if k8s_config['name_space']:
         logging.info("Configuring Spark for Kubernetes mode.")
@@ -53,7 +58,7 @@ def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
     blob_urls = []
 
     for blob in blobs:
-        blob_url = f"https://{container_client.account_name}.blob.core.windows.net/{container_name}/{blob.name}"
+        # blob_url = f"https://{container_client.account_name}.blob.core.windows.net/{container_name}/{blob.name}"
         blob_url = f"abfs://{container_name}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         blob_urls.append(blob_url)
 

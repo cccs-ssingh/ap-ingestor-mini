@@ -90,37 +90,50 @@ def ingest_to_iceberg(spark, input_files, tablename, file_type, xml_row_tag=None
         .option("merge-schema", "true") \
         .createOrReplace()
 
-
-# Main function
-def run(*args, **kwargs):
+def parse_cmd_line_args(args, kwargs):
 
     logging.debug(f"args: {args}")
     logging.debug(f"kwargs: {kwargs}")
 
-    parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
-    parser.add_argument('--data_container_name', default="data",
+    arg_parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
+    arg_parser.add_argument('--data_container_name', default="data",
                         help="Azure Storage container name for raw data (default: 'data')")
-    parser.add_argument('--raw_data_dir', required=True, help="Raw data directory in Azure Storage")
-    parser.add_argument('--file_type', required=True,
+    arg_parser.add_argument('--raw_data_dir', required=True, help="Raw data directory in Azure Storage")
+    arg_parser.add_argument('--file_type', required=True,
                         help="File type of the raw data (e.g., 'csv', 'parquet', 'json', 'xml', 'avro')")
-    parser.add_argument('--table_name', required=True, help="Target Iceberg table name")
-    parser.add_argument('--warehouse_container_name', default="warehouse",
+    arg_parser.add_argument('--table_name', required=True, help="Target Iceberg table name")
+    arg_parser.add_argument('--warehouse_container_name', default="warehouse",
                         help="Azure Storage container name for Iceberg warehouse (default: 'warehouse')")
-    parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
-    parser.add_argument('--xml_row_tag', help="Row tag to use for XML format (only required if file_type is 'xml')")
+    arg_parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
+    arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format (only required if file_type is 'xml')")
 
     # Kubernetes mode config arguments
-    parser.add_argument('--k8s_name_space', help="Kubernetes name space")
-    parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
+    arg_parser.add_argument('--k8s_name_space', help="Kubernetes name space")
+    arg_parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
 
     # Driver config arguments for Spark
-    parser.add_argument('--spark_sql_files_maxPartitionBytes', default="512m",
+    arg_parser.add_argument('--spark_sql_files_maxPartitionBytes', default="512m",
                         help="Max partition bytes for Spark SQL files")
-    parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
-    parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
-    parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
+    arg_parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
+    arg_parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
+    arg_parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
 
-    args = parser.parse_args()
+    if kwargs and "run_args" in kwargs["context"]:
+        # parse airflow args via kwargs
+        arg_parser = arg_parser.parse_args(kwargs["context"]["run_args"])
+    elif args and len(args) > 0:
+        # parse airflow args via args
+        arg_parser = arg_parser.parse_args(args)
+    else:
+        # parse local args
+        arg_parser = arg_parser.parse_args()
+
+    return arg_parser
+
+
+# Main function
+def run(*args, **kwargs):
+    args = parse_cmd_line_args(args, kwargs)
 
     # Create driver configuration dictionary
     driver_config = {
@@ -130,6 +143,8 @@ def run(*args, **kwargs):
         "spark.executor.instances": args.spark_executor_instances,
         "spark.jars.packages": args.spark_jars_packages
     }
+
+    # Kubernetes configuration dictionary
     k8s_config = {
         "spark_image": args.k8s_spark_image,
         "name_space": args.k8s_name_space,

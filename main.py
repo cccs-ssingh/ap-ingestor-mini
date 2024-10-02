@@ -93,6 +93,10 @@ def ingest_to_iceberg(spark, input_files, tablename, file_type, xml_row_tag=None
 
 # Main function
 def run(*args, **kwargs):
+
+    logging.debug(f"args: {args}")
+    logging.debug(f"kwargs: {kwargs}")
+
     parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
     parser.add_argument('--data_container_name', default="data",
                         help="Azure Storage container name for raw data (default: 'data')")
@@ -117,9 +121,6 @@ def run(*args, **kwargs):
     parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
 
     args = parser.parse_args()
-
-    logging.debug(f"args: {args}")
-    logging.debug(f"kwargs: {kwargs}")
 
     # Create driver configuration dictionary
     driver_config = {

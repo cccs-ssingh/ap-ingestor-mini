@@ -91,7 +91,7 @@ def ingest_to_iceberg(spark, input_files, tablename, file_type, xml_row_tag=None
 
 
 # Main function
-def main():
+def run(*args, **kwargs):
     parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
     parser.add_argument('--data_container_name', default="data",
                         help="Azure Storage container name for raw data (default: 'data')")

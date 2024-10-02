@@ -167,10 +167,13 @@ def run(*args, **kwargs):
         container_name=args.data_container_name,
         raw_data_dir=args.raw_data_dir
     )
-    input_files = [file for file in input_files if file.endswith(args.file_type)]
     if not input_files:
         logging.warning("No files found in the specified directory.")
         return
+    input_files = [file for file in input_files if file.endswith(args.file_type)]
+    logging.info(f'{len(input_files)} files of type: {args.file_type}')
+    for file_url in input_files:
+        logging.info(f'- {file_url}')
 
     # Create Spark session with driver configs and Kubernetes mode support
     warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"

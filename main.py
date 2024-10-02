@@ -80,24 +80,23 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 
 
 # Function to ingest raw data into an Iceberg table dynamically
-def ingest_to_iceberg(spark, input_files, datafeed, file_type, xml_row_tag=None):
+def ingest_to_iceberg(spark, input_files, tablename, file_type, xml_row_tag=None):
     # Read the data based on the file type
     df = read_data(spark, input_files, file_type, xml_row_tag)
 
-    logging.info(f"Ingesting data into Iceberg table: {datafeed}")
-    df.writeTo(f"spark_catalog.{datafeed}") \
+    logging.info(f"Ingesting data into Iceberg table: {tablename}")
+    df.writeTo(f"spark_catalog.{tablename}") \
         .option("merge-schema", "true") \
         .createOrReplace()
 
 
 # Main function
 def main():
-
     parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
     parser.add_argument('--data_container_name', default="data",
                         help="Azure Storage container name for raw data (default: 'data')")
     parser.add_argument('--raw_data_dir', required=True, help="Raw data directory in Azure Storage")
-    parser.add_argument('--datafeed', required=True, help="Target Iceberg table name")
+    parser.add_argument('--tablename', required=True, help="Target Iceberg table name")
     parser.add_argument('--warehouse_container_name', default="warehouse",
                         help="Azure Storage container name for Iceberg warehouse (default: 'warehouse')")
     parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
@@ -124,16 +123,18 @@ def main():
         "spark.jars.packages": args.spark_jars_packages
     }
 
-    # Create Spark session with driver configs and Kubernetes mode support
-    warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
-    spark = create_spark_session(warehouse_url, args.k8s_mode, driver_config)
-
-    # List the files from the Azure directory (data container)
+    # Azure Connection string from env var
     conn_str = None
     for key, value in os.environ.items():
         if key.endswith('_CONN_STR'):
             conn_str = value
             break
+
+    # Create Spark session with driver configs and Kubernetes mode support
+    warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
+    spark = create_spark_session(warehouse_url, args.k8s_mode, driver_config)
+
+    # List the files from the Azure directory (data container)
     input_files = list_blobs_in_directory(
         conn_str=conn_str,
         container_name=args.data_container_name,
@@ -145,9 +146,9 @@ def main():
         return
 
     # Ingest files into Iceberg table
-    ingest_to_iceberg(spark, input_files, args.datafeed, args.file_type, args.xml_row_tag)
+    ingest_to_iceberg(spark, input_files, args.tablename, args.file_type, args.xml_row_tag)
 
-    logging.info(f"Successfully ingested data into Iceberg table: {args.datafeed}")
+    logging.info(f"Successfully ingested data into Iceberg table: {args.tablename}")
 
 
 if __name__ == "__main__":

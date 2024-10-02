@@ -38,8 +38,8 @@ def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config,
             .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
 
     spark = spark_builder.getOrCreate()
-    # Set log level to ERROR to minimize logging
-    spark.sparkContext.setLogLevel("ERROR")
+    # # Set log level to ERROR to minimize logging
+    # spark.sparkContext.setLogLevel("ERROR")
 
     return spark
 
@@ -96,6 +96,13 @@ def ingest_to_iceberg(spark, input_files, table_name, file_type, xml_row_tag=Non
     df = read_data(spark, input_files, file_type, xml_row_tag)
 
     logging.info(f"Ingesting data into Iceberg table: {table_name}")
+
+    # Validate the table name
+    if not table_name or table_name.strip() == "":
+        raise ValueError("Table name cannot be empty.")
+    if '.' in table_name:
+        raise ValueError("Table name must be a single-part namespace (no periods).")
+
     df.writeTo(f"spark_catalog.{table_name}") \
         .option("merge-schema", "true") \
         .createOrReplace()

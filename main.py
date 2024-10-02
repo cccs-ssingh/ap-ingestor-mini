@@ -96,12 +96,12 @@ def main():
     parser.add_argument('--data_container_name', default="data",
                         help="Azure Storage container name for raw data (default: 'data')")
     parser.add_argument('--raw_data_dir', required=True, help="Raw data directory in Azure Storage")
-    parser.add_argument('--tablename', required=True, help="Target Iceberg table name")
+    parser.add_argument('--file_type', required=True,
+                        help="File type of the raw data (e.g., 'csv', 'parquet', 'json', 'xml', 'avro')")
+    parser.add_argument('--table_name', required=True, help="Target Iceberg table name")
     parser.add_argument('--warehouse_container_name', default="warehouse",
                         help="Azure Storage container name for Iceberg warehouse (default: 'warehouse')")
     parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
-    parser.add_argument('--file_type', required=True,
-                        help="File type of the raw data (e.g., 'csv', 'parquet', 'json', 'xml', 'avro')")
     parser.add_argument('--xml_row_tag', help="Row tag to use for XML format (only required if file_type is 'xml')")
     parser.add_argument('--k8s_mode', action='store_true', help="Enable Kubernetes mode for Spark")
 

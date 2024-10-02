@@ -11,12 +11,14 @@ az_logger.setLevel(logging.WARNING)
 
 
 # Function to create Spark session with Iceberg and XML support
-def create_spark_session(warehouse_dir, k8s_config, driver_config):
-    logging.info("Creating Spark session for Iceberg and XML support.")
+def create_spark_session(storage_acct_name, warehouse_dir, conn_str, k8s_config, driver_config):
+    logging.info("Creating Spark session")
 
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion") \
+        .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
+        .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", conn_str) \
         .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
         .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
         .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_dir) \
@@ -25,7 +27,7 @@ def create_spark_session(warehouse_dir, k8s_config, driver_config):
         .config("spark.executor.memory", driver_config.get("spark.executor.memory", "4g")) \
         .config("spark.executor.cores", driver_config.get("spark.executor.cores", "4")) \
         .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1")) \
-        # .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
+        .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
 
     if k8s_config['name_space']:
         logging.info("Configuring Spark for Kubernetes mode.")
@@ -53,15 +55,13 @@ def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
         blob_url = f"https://{container_client.account_name}.blob.core.windows.net/{container_name}/{blob.name}"
         blob_urls.append(blob_url)
 
-    logging.info(f"- {len(blob_urls)} blob files found")
-    return blob_urls
+    logging.info(f"- {len(blob_urls)} blobs returned")
+    return blob_service_client.account_name, blob_urls
 
 
 # Function to read data based on the file type
 def read_data(spark, input_files, file_type, xml_row_tag=None):
     logging.info(f"Reading data from input files with file type: {file_type}")
-
-    input_file = input_files[0]
 
     if file_type == "csv":
         df = spark.read.option("header", "true").csv(input_files)
@@ -164,7 +164,7 @@ def run(*args, **kwargs):
             break
 
     # List the files from the Azure directory (data container)
-    input_files = list_blobs_in_directory(
+    storage_acct_name, input_files = list_blobs_in_directory(
         conn_str=conn_str,
         container_name=args.data_container_name,
         raw_data_dir=args.raw_data_dir
@@ -173,13 +173,13 @@ def run(*args, **kwargs):
         logging.warning("No files found in the specified directory.")
         return
     input_files = [file for file in input_files if file.endswith(args.file_type)]
-    logging.info(f'- {len(input_files)} files of type: {args.file_type}')
+    logging.info(f'- {len(input_files)} blobs of type: {args.file_type}')
     for file_url in input_files:
         logging.info(f'- {file_url}')
 
     # Create Spark session with driver configs and Kubernetes mode support
     warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
-    spark = create_spark_session(warehouse_url, k8s_config, driver_config)
+    spark = create_spark_session(storage_acct_name, warehouse_url, k8s_config, driver_config)
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(spark, input_files, args.table_name, args.file_type, args.xml_row_tag)

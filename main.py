@@ -92,8 +92,8 @@ def ingest_to_iceberg(spark, input_files, datafeed, file_type, xml_row_tag=None)
 
 # Main function
 def main():
+
     parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
-    parser.add_argument('--conn_str', required=True, help="Azure Storage connection string")
     parser.add_argument('--data_container_name', default="data",
                         help="Azure Storage container name for raw data (default: 'data')")
     parser.add_argument('--raw_data_dir', required=True, help="Raw data directory in Azure Storage")
@@ -129,8 +129,13 @@ def main():
     spark = create_spark_session(warehouse_url, args.k8s_mode, driver_config)
 
     # List the files from the Azure directory (data container)
+    conn_str = None
+    for key, value in os.environ.items():
+        if key.endswith('_CONN_STR'):
+            conn_str = value
+            break
     input_files = list_blobs_in_directory(
-        conn_str=args.conn_str,
+        conn_str=conn_str,
         container_name=args.data_container_name,
         raw_data_dir=args.raw_data_dir
     )

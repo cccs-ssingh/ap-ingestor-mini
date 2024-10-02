@@ -5,7 +5,8 @@ from azure.storage.blob import BlobServiceClient
 from pyspark.sql import SparkSession
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s - %(message)s')
 
 
 # Function to create Spark session with Iceberg and XML support
@@ -104,6 +105,7 @@ def run(*args, **kwargs):
     parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
     parser.add_argument('--xml_row_tag', help="Row tag to use for XML format (only required if file_type is 'xml')")
 
+    # Kubernetes mode config arguments
     parser.add_argument('--k8s_name_space', help="Kubernetes name space")
     parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
 
@@ -115,6 +117,9 @@ def run(*args, **kwargs):
     parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
 
     args = parser.parse_args()
+
+    logging.debug(f"args: {args}")
+    logging.debug(f"kwargs: {kwargs}")
 
     # Create driver configuration dictionary
     driver_config = {

@@ -81,12 +81,12 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 
 
 # Function to ingest raw data into an Iceberg table dynamically
-def ingest_to_iceberg(spark, input_files, tablename, file_type, xml_row_tag=None):
+def ingest_to_iceberg(spark, input_files, table_name, file_type, xml_row_tag=None):
     # Read the data based on the file type
     df = read_data(spark, input_files, file_type, xml_row_tag)
 
-    logging.info(f"Ingesting data into Iceberg table: {tablename}")
-    df.writeTo(f"spark_catalog.{tablename}") \
+    logging.info(f"Ingesting data into Iceberg table: {table_name}")
+    df.writeTo(f"spark_catalog.{table_name}") \
         .option("merge-schema", "true") \
         .createOrReplace()
 
@@ -172,9 +172,9 @@ def run(*args, **kwargs):
         return
 
     # Ingest files into Iceberg table
-    ingest_to_iceberg(spark, input_files, args.tablename, args.file_type, args.xml_row_tag)
+    ingest_to_iceberg(spark, input_files, args.table_name, args.file_type, args.xml_row_tag)
 
-    logging.info(f"Successfully ingested data into Iceberg table: {args.tablename}")
+    logging.info(f"Successfully ingested data into Iceberg table: {args.table_name}")
 
 
 if __name__ == "__main__":

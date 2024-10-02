@@ -39,7 +39,7 @@ def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config,
 
     spark = spark_builder.getOrCreate()
     # Set log level to ERROR to minimize logging
-    spark_builder.sparkContext.setLogLevel("ERROR")
+    spark.sparkContext.setLogLevel("ERROR")
 
     return spark
 

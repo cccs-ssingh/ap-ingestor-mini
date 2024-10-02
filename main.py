@@ -11,18 +11,19 @@ az_logger.setLevel(logging.WARNING)
 
 
 # Function to create Spark session with Iceberg and XML support
-def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config, driver_config):
+def create_spark_session(warehouse_url, k8s_config, driver_config):
     logging.info("Creating Spark session")
 
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
-        .appName("Iceberg Ingestion") \
-        .config("spark.executor.memory", driver_config.get("spark.executor.memory", "4g")) \
-        .config("spark.executor.cores", driver_config.get("spark.executor.cores", "4")) \
-        .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1")) \
-        .config("spark.sql.files.maxPartitionBytes", driver_config.get("spark.sql.files.maxPartitionBytes", "512m")) \
+        .appName("Iceberg Ingestion from Azure") \
+        .config("spark.executor.memory", driver_config["spark.executor.memory"]) \
+        .config("spark.executor.cores", driver_config["spark.executor.cores"]) \
+        .config("spark.executor.instances", driver_config["spark.executor.instances"]) \
+        .config("spark.sql.files.maxPartitionBytes", driver_config["spark.sql.files.maxPartitionBytes"]) \
         .config("spark.sql.catalog.my_catalog", "org.apache.iceberg.spark.SparkCatalog") \
-        .config("spark.sql.catalog.my_catalog.warehouse", f"abfss://warehouse@{storage_acct_name}.dfs.core.windows.net/{warehouse_dir}") \
+        .config("spark.sql.catalog.my_catalog.type", "hadoop") \
+        .config("spark.sql.catalog.my_catalog.warehouse", warehouse_url) \
         .config("spark.sql.catalog.my_catalog.catalog-impl", "org.apache.iceberg.jdbc.JdbcCatalog") \
         .config("spark.sql.catalog.my_catalog.uri","jdbc:postgresql://hogwarts-u.postgres.database.azure.com:5432/icebergcatalog") \
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
@@ -104,7 +105,7 @@ def ingest_to_iceberg(spark, input_files, table_name, file_type, xml_row_tag=Non
         raise ValueError("Table name must be a single-part namespace (no periods).")
 
     logging.info(f"Ingesting data into Iceberg table: {table_name}")
-    df.writeTo(f"spark_catalog.{table_name}") \
+    df.writeTo(f"my_catalog.{table_name}") \
         .option("merge-schema", "true") \
         .createOrReplace()
 
@@ -130,8 +131,7 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
 
     # Driver config arguments for Spark
-    arg_parser.add_argument('--spark_sql_files_maxPartitionBytes', default="512m",
-                        help="Max partition bytes for Spark SQL files")
+    arg_parser.add_argument('--spark_sql_files_maxPartitionBytes', default="512m", help="Max partition bytes for Spark SQL files")
     arg_parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
     arg_parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
     arg_parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
@@ -189,8 +189,9 @@ def run(*args, **kwargs):
         logging.info(f'- {file_url}')
 
     # Create Spark session with driver configs and Kubernetes mode support
-    warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
-    spark = create_spark_session(storage_acct_name, conn_str, warehouse_url, k8s_config, driver_config)
+    warehouse_url = f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}"
+    logging.info(f"Output warehouse url:{warehouse_url}")
+    spark = create_spark_session(warehouse_url, k8s_config, driver_config)
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(spark, input_files, args.table_name, args.file_type, args.xml_row_tag)

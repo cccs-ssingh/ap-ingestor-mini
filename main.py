@@ -71,7 +71,7 @@ def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
         blob_urls.append(blob_url)
 
     logging.info(f"- {len(blob_urls)} blobs returned")
-    return container_client.account_name, blob_urls
+    return blob_urls
 
 
 # Function to read data based on the file type

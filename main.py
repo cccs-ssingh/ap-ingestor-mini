@@ -141,7 +141,6 @@ def run(*args, **kwargs):
         "spark.executor.memory": args.spark_executor_memory,
         "spark.executor.cores": args.spark_executor_cores,
         "spark.executor.instances": args.spark_executor_instances,
-        "spark.jars.packages": args.spark_jars_packages
     }
 
     # Kubernetes configuration dictionary

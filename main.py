@@ -66,7 +66,9 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
     elif file_type == "parquet":
         df = spark.read.parquet(input_files)
     elif file_type == "json":
-        df = spark.read.json(input_files)
+        # df = spark.read.json(input_files)
+        df = spark.read.option("multiLine", "true").json(input_files)
+
     elif file_type == "xml":
         if not xml_row_tag:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")

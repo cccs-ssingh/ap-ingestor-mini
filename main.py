@@ -5,11 +5,11 @@ from azure.storage.blob import BlobServiceClient
 from pyspark.sql import SparkSession
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s - %(message)s')
 
 
 # Function to create Spark session with Iceberg and XML support
-def create_spark_session(warehouse_dir, k8s_mode, driver_config):
+def create_spark_session(warehouse_dir, k8s_config, driver_config):
     logging.info("Creating Spark session for Iceberg and XML support.")
 
     # Basic Spark session configuration
@@ -25,12 +25,12 @@ def create_spark_session(warehouse_dir, k8s_mode, driver_config):
         .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1")) \
         .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
 
-    if k8s_mode:
+    if k8s_config['name_space']:
         logging.info("Configuring Spark for Kubernetes mode.")
         spark_builder = spark_builder \
             .config("spark.master", "k8s://https://kubernetes.default.svc") \
-            .config("spark.kubernetes.container.image", "your-kubernetes-spark-image") \
-            .config("spark.kubernetes.namespace", "your-namespace") \
+            .config("spark.kubernetes.container.image", k8s_config['spark_image']) \
+            .config("spark.kubernetes.namespace", k8s_config['name_space']) \
             .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
 
     spark = spark_builder.getOrCreate()
@@ -103,7 +103,9 @@ def main():
                         help="Azure Storage container name for Iceberg warehouse (default: 'warehouse')")
     parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
     parser.add_argument('--xml_row_tag', help="Row tag to use for XML format (only required if file_type is 'xml')")
-    parser.add_argument('--k8s_mode', action='store_true', help="Enable Kubernetes mode for Spark")
+
+    parser.add_argument('--k8s_name_space', help="Kubernetes name space")
+    parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
 
     # Driver config arguments for Spark
     parser.add_argument('--spark_sql_files_maxPartitionBytes', default="512m",
@@ -122,6 +124,10 @@ def main():
         "spark.executor.instances": args.spark_executor_instances,
         "spark.jars.packages": args.spark_jars_packages
     }
+    k8s_config = {
+        "spark_image": args.k8s_spark_image,
+        "name_space": args.k8s_name_space,
+    }
 
     # Azure Connection string from env var
     conn_str = None
@@ -132,7 +138,7 @@ def main():
 
     # Create Spark session with driver configs and Kubernetes mode support
     warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
-    spark = create_spark_session(warehouse_url, args.k8s_mode, driver_config)
+    spark = create_spark_session(warehouse_url, k8s_config, driver_config)
 
     # List the files from the Azure directory (data container)
     input_files = list_blobs_in_directory(

@@ -41,13 +41,10 @@ def create_spark_session(warehouse_dir, k8s_config, driver_config):
 
 # Function to list blobs in a directory from Azure Blob Storage using connection string
 def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
-
-
-    logging.info(f"Listing blobs from container '{container_name}' in directory '{raw_data_dir}'")
-
     blob_service_client = BlobServiceClient.from_connection_string(conn_str)
     container_client = blob_service_client.get_container_client(container_name)
-    logging.info(f"- connected to: {container_client.url}")
+    logging.info(f"Connected to: {container_client.url}")
+    logging.info(f"- listing blobs from container '{container_name}' in directory '{raw_data_dir}'")
 
     blobs = container_client.list_blobs(name_starts_with=raw_data_dir)
     blob_urls = []
@@ -56,6 +53,7 @@ def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
         blob_url = f"https://{container_client.account_name}.blob.core.windows.net/{container_name}/{blob.name}"
         blob_urls.append(blob_url)
 
+    logging.info(f"- {len(blob_urls)} blob files found")
     return blob_urls
 
 

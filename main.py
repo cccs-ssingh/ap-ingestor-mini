@@ -25,7 +25,7 @@ def create_spark_session(warehouse_dir, k8s_config, driver_config):
         .config("spark.executor.memory", driver_config.get("spark.executor.memory", "4g")) \
         .config("spark.executor.cores", driver_config.get("spark.executor.cores", "4")) \
         .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1")) \
-        .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
+        # .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
 
     if k8s_config['name_space']:
         logging.info("Configuring Spark for Kubernetes mode.")
@@ -61,13 +61,15 @@ def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
 def read_data(spark, input_files, file_type, xml_row_tag=None):
     logging.info(f"Reading data from input files with file type: {file_type}")
 
+    input_file = input_files[0]
+
     if file_type == "csv":
         df = spark.read.option("header", "true").csv(input_files)
     elif file_type == "parquet":
         df = spark.read.parquet(input_files)
     elif file_type == "json":
-        # df = spark.read.json(input_files)
-        df = spark.read.option("multiLine", "true").json(input_files)
+        df = spark.read.json(input_files)
+        # df = spark.read.option("multiLine", "true").json(input_files)
 
     elif file_type == "xml":
         if not xml_row_tag:
@@ -171,7 +173,7 @@ def run(*args, **kwargs):
         logging.warning("No files found in the specified directory.")
         return
     input_files = [file for file in input_files if file.endswith(args.file_type)]
-    logging.info(f'{len(input_files)} files of type: {args.file_type}')
+    logging.info(f'- {len(input_files)} files of type: {args.file_type}')
     for file_url in input_files:
         logging.info(f'- {file_url}')
 

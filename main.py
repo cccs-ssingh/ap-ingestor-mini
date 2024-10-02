@@ -165,7 +165,7 @@ def run(*args, **kwargs):
         container_name=args.data_container_name,
         raw_data_dir=args.raw_data_dir
     )
-
+    input_files = [file for file in input_files if file.endswith(args.file_type)]
     if not input_files:
         logging.warning("No files found in the specified directory.")
         return

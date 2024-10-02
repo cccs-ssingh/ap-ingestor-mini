@@ -5,7 +5,9 @@ from azure.storage.blob import BlobServiceClient
 from pyspark.sql import SparkSession
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+az_logger = logging.getLogger("azure")
+az_logger.setLevel(logging.WARNING)
 
 
 # Function to create Spark session with Iceberg and XML support
@@ -39,6 +41,8 @@ def create_spark_session(warehouse_dir, k8s_config, driver_config):
 
 # Function to list blobs in a directory from Azure Blob Storage using connection string
 def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
+
+
     logging.info(f"Listing blobs from container '{container_name}' in directory '{raw_data_dir}'")
 
     blob_service_client = BlobServiceClient.from_connection_string(conn_str)

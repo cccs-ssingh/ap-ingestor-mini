@@ -14,11 +14,12 @@ az_logger.setLevel(logging.WARNING)
 def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config, driver_config):
     logging.info("Creating Spark session")
 
+        # .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
+        # .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", conn_str) \
+
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion") \
-        .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
-        .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", conn_str) \
         .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
         .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
         .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_dir) \
@@ -53,10 +54,11 @@ def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
 
     for blob in blobs:
         blob_url = f"https://{container_client.account_name}.blob.core.windows.net/{container_name}/{blob.name}"
+        blob_url = f"abfs://{container_name}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         blob_urls.append(blob_url)
 
     logging.info(f"- {len(blob_urls)} blobs returned")
-    return blob_service_client.account_name, blob_urls
+    return container_client.account_name, blob_urls
 
 
 # Function to read data based on the file type

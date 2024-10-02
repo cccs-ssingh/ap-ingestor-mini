@@ -17,17 +17,19 @@ def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config,
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion") \
-        .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
-        .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", conn_str) \
-        .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
-        .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
-        .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_dir) \
-        .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
-        .config("spark.sql.files.maxPartitionBytes", driver_config.get("spark.sql.files.maxPartitionBytes", "512m")) \
         .config("spark.executor.memory", driver_config.get("spark.executor.memory", "4g")) \
         .config("spark.executor.cores", driver_config.get("spark.executor.cores", "4")) \
         .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1")) \
+        .config("spark.sql.files.maxPartitionBytes", driver_config.get("spark.sql.files.maxPartitionBytes", "512m")) \
+        .config("spark.sql.catalog.my_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+        .config("spark.sql.catalog.my_catalog.warehouse", f"abfss://warehouse@{storage_acct_name}.dfs.core.windows.net/{warehouse_dir}") \
+        .config("spark.sql.catalog.my_catalog.catalog-impl", "org.apache.iceberg.jdbc.JdbcCatalog") \
+        .config("spark.sql.catalog.my_catalog.uri","jdbc:postgresql://hogwarts-u.postgres.database.azure.com:5432/icebergcatalog") \
+        .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
         .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
+        # .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+        # .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
+        # .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_dir) \
 
     if k8s_config['name_space']:
         logging.info("Configuring Spark for Kubernetes mode.")

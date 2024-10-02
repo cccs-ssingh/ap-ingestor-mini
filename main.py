@@ -11,7 +11,7 @@ az_logger.setLevel(logging.WARNING)
 
 
 # Function to create Spark session with Iceberg and XML support
-def create_spark_session(storage_acct_name, warehouse_dir, conn_str, k8s_config, driver_config):
+def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config, driver_config):
     logging.info("Creating Spark session")
 
     # Basic Spark session configuration
@@ -179,7 +179,7 @@ def run(*args, **kwargs):
 
     # Create Spark session with driver configs and Kubernetes mode support
     warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
-    spark = create_spark_session(storage_acct_name, warehouse_url, k8s_config, driver_config)
+    spark = create_spark_session(storage_acct_name, conn_str, warehouse_url, k8s_config, driver_config)
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(spark, input_files, args.table_name, args.file_type, args.xml_row_tag)

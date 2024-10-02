@@ -95,14 +95,13 @@ def ingest_to_iceberg(spark, input_files, table_name, file_type, xml_row_tag=Non
     # Read the data based on the file type
     df = read_data(spark, input_files, file_type, xml_row_tag)
 
-    logging.info(f"Ingesting data into Iceberg table: {table_name}")
-
     # Validate the table name
     if not table_name or table_name.strip() == "":
         raise ValueError("Table name cannot be empty.")
     if '.' in table_name:
         raise ValueError("Table name must be a single-part namespace (no periods).")
 
+    logging.info(f"Ingesting data into Iceberg table: {table_name}")
     df.writeTo(f"spark_catalog.{table_name}") \
         .option("merge-schema", "true") \
         .createOrReplace()

@@ -10,8 +10,20 @@ az_logger = logging.getLogger("azure")
 az_logger.setLevel(logging.WARNING)
 
 
+def parse_connection_string(conn_str):
+    """
+    Parse the Azure connection string to extract the AccountName and AccountKey.
+    """
+    # Split the connection string by semicolons to get the individual key-value pairs
+    conn_dict = dict(item.split("=", 1) for item in conn_str.split(";"))
+
+    account_name = conn_dict.get("AccountName")
+    account_key = conn_dict.get("AccountKey")
+
+    return account_name, account_key
+
 # Function to create Spark session with Iceberg and XML support
-def create_spark_session(warehouse_url, k8s_config, driver_config):
+def create_spark_session(warehouse_url, k8s_config, driver_config, storage_acct_name, storage_acct_key):
     logging.info("Creating Spark session")
 
     # Basic Spark session configuration
@@ -21,16 +33,12 @@ def create_spark_session(warehouse_url, k8s_config, driver_config):
         .config("spark.executor.cores", driver_config["spark.executor.cores"]) \
         .config("spark.executor.instances", driver_config["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", driver_config["spark.sql.files.maxPartitionBytes"]) \
-        .config("spark.sql.catalog.my_catalog", "org.apache.iceberg.spark.SparkCatalog") \
-        .config("spark.sql.catalog.my_catalog.type", "hadoop") \
-        .config("spark.sql.catalog.my_catalog.warehouse", warehouse_url) \
-        .config("spark.sql.catalog.my_catalog.catalog-impl", "org.apache.iceberg.jdbc.JdbcCatalog") \
-        .config("spark.sql.catalog.my_catalog.uri","jdbc:postgresql://hogwarts-u.postgres.database.azure.com:5432/icebergcatalog") \
-        .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
-        .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
-        # .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
-        # .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
-        # .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_dir) \
+        .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+        .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
+        .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_url) \
+        .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
+        .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", storage_acct_key) \
+        .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
     if k8s_config['name_space']:
         logging.info("Configuring Spark for Kubernetes mode.")
@@ -175,7 +183,7 @@ def run(*args, **kwargs):
             break
 
     # List the files from the Azure directory (data container)
-    storage_acct_name, input_files = list_blobs_in_directory(
+    input_files = list_blobs_in_directory(
         conn_str=conn_str,
         container_name=args.data_container_name,
         raw_data_dir=args.raw_data_dir
@@ -188,10 +196,17 @@ def run(*args, **kwargs):
     for file_url in input_files:
         logging.info(f'- {file_url}')
 
+    # Extract azure storage account name and key from connection string
+    storage_acct_name, storage_acct_key = parse_connection_string(conn_str)
+
     # Create Spark session with driver configs and Kubernetes mode support
     warehouse_url = f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}"
-    logging.info(f"Output warehouse url:{warehouse_url}")
-    spark = create_spark_session(warehouse_url, k8s_config, driver_config)
+    logging.info(f"Output warehouse url: {warehouse_url}")
+    spark = create_spark_session(warehouse_url, k8s_config, driver_config, storage_acct_name, storage_acct_key)
+
+    # test azure connection
+    df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
+    df.write.csv(warehouse_url)
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(spark, input_files, args.table_name, args.file_type, args.xml_row_tag)

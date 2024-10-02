@@ -32,8 +32,8 @@ def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config,
         .config("spark.executor.instances", driver_config.get("spark.executor.instances", "1")) \
         .config("spark.jars.packages", driver_config.get("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0"))
 
-    # Set log level to ERROR to minimize logging
-    spark_builder.sparkContext.setLogLevel("ERROR")
+    # # Set log level to ERROR to minimize logging
+    # spark_builder.sparkContext.setLogLevel("ERROR")
 
     if k8s_config['name_space']:
         logging.info("Configuring Spark for Kubernetes mode.")

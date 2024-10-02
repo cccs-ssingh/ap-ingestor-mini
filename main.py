@@ -14,9 +14,6 @@ az_logger.setLevel(logging.WARNING)
 def create_spark_session(storage_acct_name, conn_str, warehouse_dir, k8s_config, driver_config):
     logging.info("Creating Spark session")
 
-        # .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
-        # .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", conn_str) \
-
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion") \
@@ -75,9 +72,8 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
     elif file_type == "parquet":
         df = spark.read.parquet(input_files)
     elif file_type == "json":
-        df = spark.read.json(input_files)
-        # df = spark.read.option("multiLine", "true").json(input_files)
-
+        # df = spark.read.json(input_files)
+        df = spark.read.option("multiLine", "true").json(input_files)
     elif file_type == "xml":
         if not xml_row_tag:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")

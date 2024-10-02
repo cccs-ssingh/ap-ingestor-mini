@@ -6,7 +6,6 @@ from pyspark.sql import SparkSession
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(levelname)s - %(message)s')
 
 
 # Function to create Spark session with Iceberg and XML support
@@ -41,8 +40,10 @@ def create_spark_session(warehouse_dir, k8s_config, driver_config):
 # Function to list blobs in a directory from Azure Blob Storage using connection string
 def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
     logging.info(f"Listing blobs from container '{container_name}' in directory '{raw_data_dir}'")
+
     blob_service_client = BlobServiceClient.from_connection_string(conn_str)
     container_client = blob_service_client.get_container_client(container_name)
+    logging.info(f"- connected to: {container_client.url}")
 
     blobs = container_client.list_blobs(name_starts_with=raw_data_dir)
     blob_urls = []
@@ -152,13 +153,9 @@ def run(*args, **kwargs):
     # Azure Connection string from env var
     conn_str = None
     for key, value in os.environ.items():
-        if key.endswith('_CONN_STR'):
+        if key.endswith('CONN_STR'):
             conn_str = value
             break
-
-    # Create Spark session with driver configs and Kubernetes mode support
-    warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
-    spark = create_spark_session(warehouse_url, k8s_config, driver_config)
 
     # List the files from the Azure directory (data container)
     input_files = list_blobs_in_directory(
@@ -170,6 +167,10 @@ def run(*args, **kwargs):
     if not input_files:
         logging.warning("No files found in the specified directory.")
         return
+
+    # Create Spark session with driver configs and Kubernetes mode support
+    warehouse_url = f"https://{args.warehouse_container_name}.blob.core.windows.net/{args.warehouse_dir}"
+    spark = create_spark_session(warehouse_url, k8s_config, driver_config)
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(spark, input_files, args.table_name, args.file_type, args.xml_row_tag)

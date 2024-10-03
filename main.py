@@ -187,7 +187,7 @@ def create_cfg_dict(args):
                 },
                 "warehouse": {
                     "name": args.warehouse_container,
-                    "url": f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}"
+                    "url": f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}/{args.table}"
                 }
             }
         },
@@ -217,7 +217,7 @@ def run(*args, **kwargs):
     # List the files from the Azure directory (data container)
     azure_blob_urls = list_blobs_in_directory(cfg['azure'])
     if not azure_blob_urls:
-        logging.warning("No files found in the specified directory.")
+        logging.error("No files found in the specified directory.")
         return
 
     # Create Spark session

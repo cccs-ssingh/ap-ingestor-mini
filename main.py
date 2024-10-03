@@ -105,12 +105,6 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(spark, blob_urls, table_name, file_type, xml_row_tag=None):
 
-    # Filter expected file type
-    blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type)]
-    logging.info(f'- {len(blob_urls)} blobs of type: {file_type}')
-    for blob_url in blob_urls:
-        logging.info(f'- {blob_url}')
-
     # Read the data based on the file type
     df = read_data(spark, blob_urls, file_type, xml_row_tag)
 
@@ -207,6 +201,14 @@ def create_cfg_dict(args):
         }
     }
 
+def filter_urls_by_file_type(blob_urls, file_type):
+    # Filter expected file type
+    blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type)]
+    logging.info(f'- {len(blob_urls)} blobs of type: {file_type}')
+    for blob_url in blob_urls:
+        logging.info(f'- {blob_url}')
+    return blob_urls
+
 # Main function
 def run(*args, **kwargs):
 
@@ -216,6 +218,7 @@ def run(*args, **kwargs):
 
     # List the files from the Azure directory (data container)
     azure_blob_urls = list_blobs_in_directory(cfg['azure'])
+    azure_blob_urls = filter_urls_by_file_type(azure_blob_urls, args.file_type)
     if not azure_blob_urls:
         logging.error("No files found in the specified directory.")
         return

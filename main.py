@@ -15,7 +15,7 @@ def parse_connection_string(conn_str):
     Parse the Azure connection string to extract the AccountName and AccountKey.
     """
     # Split the connection string by semicolons to get the individual key-value pairs
-    conn_dict = dict(item.split("=", 1) for item in conn_str.split(";"))
+    conn_dict = dict(item.split("=", 1) for item in conn_str.split(";")).get("AccountName")
 
     account_name = conn_dict.get("AccountName")
     account_key = conn_dict.get("AccountKey")
@@ -23,29 +23,30 @@ def parse_connection_string(conn_str):
     return account_name, account_key
 
 # Function to create Spark session with Iceberg and XML support
-def create_spark_session(warehouse_url, k8s_config, driver_config, storage_acct_name, storage_acct_key):
+def create_spark_session(az_cfg, spark_cfg):
     logging.info("Creating Spark session")
+    logging.info(f"- output warehouse url: {az_cfg['container']['warehouse']['url']}")
 
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion from Azure") \
-        .config("spark.executor.memory", driver_config["spark.executor.memory"]) \
-        .config("spark.executor.cores", driver_config["spark.executor.cores"]) \
-        .config("spark.executor.instances", driver_config["spark.executor.instances"]) \
-        .config("spark.sql.files.maxPartitionBytes", driver_config["spark.sql.files.maxPartitionBytes"]) \
-        .config("spark.sql.catalog.hogwarts_u.test", "org.apache.iceberg.spark.SparkCatalog") \
-        .config("spark.sql.catalog.hogwarts_u.test.type", "hadoop") \
-        .config("spark.sql.catalog.hogwarts_u.test.warehouse", warehouse_url) \
+        .config("spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
+        .config("spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
+        .config("spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
+        .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
+        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
+        .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
+        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{spark_cfg['warehouse']['name']}", {az_cfg['container']['warehouse']['url']}) \
         .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
-        .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", storage_acct_key) \
+        .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['container']['data']['name']}.blob.core.windows.net", az_cfg['storage_account']['key']) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
-    if k8s_config['name_space']:
+    if spark_cfg['k8s']['name_space']:
         logging.info("Configuring Spark for Kubernetes mode.")
         spark_builder = spark_builder \
             .config("spark.master", "k8s://https://kubernetes.default.svc") \
-            .config("spark.kubernetes.container.image", k8s_config['spark_image']) \
-            .config("spark.kubernetes.namespace", k8s_config['name_space']) \
+            .config("spark.kubernetes.container.image", spark_cfg['k8s']['spark_image']) \
+            .config("spark.kubernetes.namespace", spark_cfg['k8s']['name_space']) \
             .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
 
     spark = spark_builder.getOrCreate()
@@ -57,21 +58,19 @@ def create_spark_session(warehouse_url, k8s_config, driver_config, storage_acct_
 
 
 # Function to list blobs in a directory from Azure Blob Storage using connection string
-def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
-    blob_service_client = BlobServiceClient.from_connection_string(conn_str)
-    container_client = blob_service_client.get_container_client(container_name)
+def list_blobs_in_directory(azure_cfg):
+    blob_service_client = BlobServiceClient.from_connection_string(azure_cfg['conn_str'])
+    container_client = blob_service_client.get_container_client(azure_cfg['container']['data']['name'])
     logging.info(f"Connected to: {container_client.url}")
-    logging.info(f"- retrieving blobs from container '{container_name}' in directory '{raw_data_dir}'")
+    logging.info(f"- retrieving blobs from container '{azure_cfg['container']['data']['name']}' in directory '{azure_cfg['container']['data']['input_dir']}'")
+    blobs = container_client.list_blobs(name_starts_with=azure_cfg['container']['data']['input_dir'])
 
-    blobs = container_client.list_blobs(name_starts_with=raw_data_dir)
     blob_urls = []
-
     for blob in blobs:
-        # blob_url = f"https://{container_client.account_name}.blob.core.windows.net/{container_name}/{blob.name}"
-        blob_url = f"abfs://{container_name}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
+        blob_url = f"abfs://{azure_cfg['container']['data']['name']}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         blob_urls.append(blob_url)
-
     logging.info(f"- {len(blob_urls)} blobs total")
+
     return blob_urls
 
 
@@ -104,15 +103,22 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 
 
 # Function to ingest raw data into an Iceberg table dynamically
-def ingest_to_iceberg(spark, input_files, table_name, file_type, xml_row_tag=None):
-    # Read the data based on the file type
-    df = read_data(spark, input_files, file_type, xml_row_tag)
+def ingest_to_iceberg(spark, blob_urls, table_name, file_type, xml_row_tag=None):
 
-    # # Validate the table name
-    # if not table_name or table_name.strip() == "":
-    #     raise ValueError("Table name cannot be empty.")
-    # if '.' in table_name:
-    #     raise ValueError("Table name must be a single-part namespace (no periods).")
+    # Filter expected file type
+    blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type)]
+    logging.info(f'- {len(blob_urls)} blobs of type: {file_type}')
+    for blob_url in blob_urls:
+        logging.info(f'- {blob_url}')
+
+    # Read the data based on the file type
+    df = read_data(spark, blob_urls, file_type, xml_row_tag)
+
+    # Validate the table name
+    if not table_name or table_name.strip() == "":
+        raise ValueError("Table name cannot be empty.")
+    if '.' in table_name:
+        raise ValueError("Table name must be a single-part namespace (no periods).")
 
     logging.info(f"Ingesting data into Iceberg table: {table_name}")
     df.writeTo(f"hogwarts_u.test.{table_name}") \
@@ -123,17 +129,21 @@ def parse_cmd_line_args(args, kwargs):
 
     logging.debug(f"args: {args}")
     logging.debug(f"kwargs: {kwargs}")
-
     arg_parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
-    arg_parser.add_argument('--data_container_name', default="data",
+
+    # Azure config arguments
+    #  Input
+    arg_parser.add_argument('--data_container', default="data",
                         help="Azure Storage container name for raw data (default: 'data')")
     arg_parser.add_argument('--raw_data_dir', required=True, help="Raw data directory in Azure Storage")
     arg_parser.add_argument('--file_type', required=True,
                         help="File type of the raw data (e.g., 'csv', 'parquet', 'json', 'xml', 'avro')")
-    arg_parser.add_argument('--table_name', required=True, help="Target Iceberg table name")
-    arg_parser.add_argument('--warehouse_container_name', default="warehouse",
+    #  Output
+    arg_parser.add_argument('--catalog', required=True, help="Spark catalog name")
+    arg_parser.add_argument('--warehouse_container', default="warehouse",
                         help="Azure Storage container name for Iceberg warehouse (default: 'warehouse')")
     arg_parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
+    arg_parser.add_argument('--table', required=True, help="Target Iceberg table name")
     arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format (only required if file_type is 'xml')")
 
     # Kubernetes mode config arguments
@@ -158,64 +168,68 @@ def parse_cmd_line_args(args, kwargs):
 
     return arg_parser
 
+# Azure Connection string from env var
+def extract_conn_str_from_env_vars():
+    for key, value in os.environ.items():
+        if key.endswith('CONN_STR'):
+            return value
+
+def create_cfg_dict(args):
+    conn_str = extract_conn_str_from_env_vars()
+    storage_acct_name, storage_acct_key = parse_connection_string(conn_str)
+
+    return {
+        "azure": {
+            "conn_str": conn_str,
+            "storage_acct": {
+                "name": storage_acct_name,
+                "key": storage_acct_key,
+            },
+            "container": {
+                "data": {
+                    "name": args.data_container,
+                    "input_dir": args.raw_data_dir
+                },
+                "warehouse": {
+                    "name": args.warehouse_container,
+                    "url": f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}"
+                }
+            }
+        },
+        "spark": {
+            "catalog": args.catalog,
+            "table": args.table,
+            "k8s": {
+                "spark_image": args.k8s_spark_image,
+                "name_space": args.k8s_name_space,
+            },
+            "driver": {
+                "spark.sql.files.maxPartitionBytes": args.spark_sql_files_maxPartitionBytes,
+                "spark.executor.memory": args.spark_executor_memory,
+                "spark.executor.cores": args.spark_executor_cores,
+                "spark.executor.instances": args.spark_executor_instances,
+            },
+        }
+    }
 
 # Main function
 def run(*args, **kwargs):
+
+    # Organized cmd line args dictionary
     args = parse_cmd_line_args(args, kwargs)
-
-    # Create driver configuration dictionary
-    driver_config = {
-        "spark.sql.files.maxPartitionBytes": args.spark_sql_files_maxPartitionBytes,
-        "spark.executor.memory": args.spark_executor_memory,
-        "spark.executor.cores": args.spark_executor_cores,
-        "spark.executor.instances": args.spark_executor_instances,
-    }
-
-    # Kubernetes configuration dictionary
-    k8s_config = {
-        "spark_image": args.k8s_spark_image,
-        "name_space": args.k8s_name_space,
-    }
-
-    # Azure Connection string from env var
-    conn_str = None
-    for key, value in os.environ.items():
-        if key.endswith('CONN_STR'):
-            conn_str = value
-            break
+    cfg = create_cfg_dict(args)
 
     # List the files from the Azure directory (data container)
-    input_files = list_blobs_in_directory(
-        conn_str=conn_str,
-        container_name=args.data_container_name,
-        raw_data_dir=args.raw_data_dir
-    )
-    if not input_files:
+    azure_blob_urls = list_blobs_in_directory(cfg['azure'])
+    if not azure_blob_urls:
         logging.warning("No files found in the specified directory.")
         return
-    input_files = [file for file in input_files if file.endswith(args.file_type)]
-    logging.info(f'- {len(input_files)} blobs of type: {args.file_type}')
-    for file_url in input_files:
-        logging.info(f'- {file_url}')
 
-    # Extract azure storage account name and key from connection string
-    storage_acct_name, storage_acct_key = parse_connection_string(conn_str)
-
-    # Create Spark session with driver configs and Kubernetes mode support
-    warehouse_url = f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}"
-    # logging.info(f"Output warehouse url: {warehouse_url}")
-    spark = create_spark_session(warehouse_url, k8s_config, driver_config, storage_acct_name, storage_acct_key)
-
-    # test azure connection
-    test_warehouse_url = f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/iceberg/test/ingestor_mini"
-    # logging.info(f"Output warehouse url: {warehouse_url}")
-    logging.info(f'Testing writing to warehouse:{test_warehouse_url}')
-    df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
-    df.write.csv(test_warehouse_url)
+    # Create Spark session
+    spark = create_spark_session(cfg['azure'], cfg['spark'])
 
     # Ingest files into Iceberg table
-    logging.info(f"Ingesting to iceberg table in {test_warehouse_url}")
-    ingest_to_iceberg(spark, input_files, args.table_name, args.file_type, args.xml_row_tag)
+    ingest_to_iceberg(spark, azure_blob_urls, cfg['spark']['table'], args.file_type, args.xml_row_tag)
     logging.info(f"- successfully ingested data into Iceberg table: {args.table_name}")
 
 

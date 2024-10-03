@@ -25,7 +25,7 @@ def parse_connection_string(conn_str):
 # Function to create Spark session with Iceberg and XML support
 def create_spark_session(az_cfg, spark_cfg):
     logging.info("Creating Spark session")
-    logging.info(f"- output warehouse url: {az_cfg['container']['warehouse']['url']}")
+    logging.info(f"- warehouse url: {az_cfg['container']['warehouse']['url']}")
 
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
@@ -52,6 +52,10 @@ def create_spark_session(az_cfg, spark_cfg):
     spark = spark_builder.getOrCreate()
     # # Set log level to ERROR to minimize logging
     # spark.sparkContext.setLogLevel("ERROR")
+
+    # Print all Spark configurations
+    for key, value in spark.sparkContext.getConf():
+        logging.info(f"{key} = {value}")
 
     logging.info('- success')
     return spark
@@ -206,7 +210,7 @@ def filter_urls_by_file_type(blob_urls, file_type):
     blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type)]
     logging.info(f'- {len(blob_urls)} blobs of type: {file_type}')
     for blob_url in blob_urls:
-        logging.info(f'- {blob_url}')
+        logging.info(f' - {blob_url}')
     return blob_urls
 
 # Main function

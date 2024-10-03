@@ -33,9 +33,9 @@ def create_spark_session(warehouse_url, k8s_config, driver_config, storage_acct_
         .config("spark.executor.cores", driver_config["spark.executor.cores"]) \
         .config("spark.executor.instances", driver_config["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", driver_config["spark.sql.files.maxPartitionBytes"]) \
-        .config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog") \
-        .config("spark.sql.catalog.spark_catalog.type", "hadoop") \
-        .config("spark.sql.catalog.spark_catalog.warehouse", warehouse_url) \
+        .config("spark.sql.catalog.hogwarts_u.test", "org.apache.iceberg.spark.SparkCatalog") \
+        .config("spark.sql.catalog.hogwarts_u.test.type", "hadoop") \
+        .config("spark.sql.catalog.hogwarts_u.test.warehouse", warehouse_url) \
         .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
         .config(f"spark.hadoop.fs.azure.account.key.{storage_acct_name}.blob.core.windows.net", storage_acct_key) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
@@ -61,7 +61,7 @@ def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
     blob_service_client = BlobServiceClient.from_connection_string(conn_str)
     container_client = blob_service_client.get_container_client(container_name)
     logging.info(f"Connected to: {container_client.url}")
-    logging.info(f"- listing blobs from container '{container_name}' in directory '{raw_data_dir}'")
+    logging.info(f"- retrieving blobs from container '{container_name}' in directory '{raw_data_dir}'")
 
     blobs = container_client.list_blobs(name_starts_with=raw_data_dir)
     blob_urls = []
@@ -71,7 +71,7 @@ def list_blobs_in_directory(conn_str, container_name, raw_data_dir):
         blob_url = f"abfs://{container_name}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         blob_urls.append(blob_url)
 
-    logging.info(f"- {len(blob_urls)} blobs returned")
+    logging.info(f"- {len(blob_urls)} blobs total")
     return blob_urls
 
 
@@ -99,6 +99,7 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
 
+    logging.info('- success')
     return df
 
 
@@ -107,14 +108,14 @@ def ingest_to_iceberg(spark, input_files, table_name, file_type, xml_row_tag=Non
     # Read the data based on the file type
     df = read_data(spark, input_files, file_type, xml_row_tag)
 
-    # Validate the table name
-    if not table_name or table_name.strip() == "":
-        raise ValueError("Table name cannot be empty.")
-    if '.' in table_name:
-        raise ValueError("Table name must be a single-part namespace (no periods).")
+    # # Validate the table name
+    # if not table_name or table_name.strip() == "":
+    #     raise ValueError("Table name cannot be empty.")
+    # if '.' in table_name:
+    #     raise ValueError("Table name must be a single-part namespace (no periods).")
 
     logging.info(f"Ingesting data into Iceberg table: {table_name}")
-    df.writeTo(f"my_catalog.{table_name}") \
+    df.writeTo(f"hogwarts_u.test.{table_name}") \
         .option("merge-schema", "true") \
         .createOrReplace()
 
@@ -207,10 +208,10 @@ def run(*args, **kwargs):
 
     # test azure connection
     test_warehouse_url = f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/iceberg/test/ingestor_mini"
-    logging.info(f"Output warehouse url: {warehouse_url}")
+    # logging.info(f"Output warehouse url: {warehouse_url}")
     logging.info(f'Testing writing to warehouse:{test_warehouse_url}')
     df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
-    df.write.csv(warehouse_url)
+    df.write.csv(test_warehouse_url)
 
     # Ingest files into Iceberg table
     logging.info(f"Ingesting to iceberg table in {test_warehouse_url}")

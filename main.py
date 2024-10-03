@@ -30,12 +30,12 @@ def create_spark_session(az_cfg, spark_cfg):
     # Basic Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion from Azure") \
-        .config("spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
-        .config("spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
-        .config("spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
+        .config(             "spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
+        .config(            "spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
+        .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
-        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
+        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{az_cfg['container']['warehouse']['name']}", {az_cfg['container']['warehouse']['url']}) \
         .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
         .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['container']['data']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
@@ -103,14 +103,14 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 
 
 # Function to ingest raw data into an Iceberg table dynamically
-def ingest_to_iceberg(spark, blob_urls, table_name, file_type, xml_row_tag=None):
+def ingest_to_iceberg(spark_sess, spark_cfg, blob_urls, file_type, xml_row_tag=None):
 
     # Read the data based on the file type
-    df = read_data(spark, blob_urls, file_type, xml_row_tag)
+    df = read_data(spark_sess, blob_urls, file_type, xml_row_tag)
 
     # Write the dataframe
-    logging.info(f"Ingesting data into Iceberg table: {table_name}")
-    df.writeTo(f"hogwarts_u.test.{table_name}") \
+    logging.info(f"Ingesting data into Iceberg table: {spark_cfg['table']}")
+    df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
         .option("merge-schema", "true") \
         .createOrReplace()
 
@@ -227,7 +227,7 @@ def run(*args, **kwargs):
     spark = create_spark_session(cfg['azure'], cfg['spark'])
 
     # Ingest files into Iceberg table
-    ingest_to_iceberg(spark, azure_blob_urls, cfg['spark']['table'], args.file_type, args.xml_row_tag)
+    ingest_to_iceberg(spark, cfg['spark'], azure_blob_urls, args.file_type, args.xml_row_tag)
     logging.info(f"- successfully ingested data into Iceberg table: {args.table}")
 
 

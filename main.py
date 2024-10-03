@@ -15,7 +15,7 @@ def parse_connection_string(conn_str):
     Parse the Azure connection string to extract the AccountName and AccountKey.
     """
     # Split the connection string by semicolons to get the individual key-value pairs
-    conn_dict = dict(item.split("=", 1) for item in conn_str.split(";")).get("AccountName")
+    conn_dict = dict(item.split("=", 1) for item in conn_str.split(";"))
 
     account_name = conn_dict.get("AccountName")
     account_key = conn_dict.get("AccountKey")
@@ -38,7 +38,7 @@ def create_spark_session(az_cfg, spark_cfg):
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{spark_cfg['warehouse']['name']}", {az_cfg['container']['warehouse']['url']}) \
         .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
-        .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['container']['data']['name']}.blob.core.windows.net", az_cfg['storage_account']['key']) \
+        .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['container']['data']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
     if spark_cfg['k8s']['name_space']:
@@ -59,7 +59,7 @@ def create_spark_session(az_cfg, spark_cfg):
 
 # Function to list blobs in a directory from Azure Blob Storage using connection string
 def list_blobs_in_directory(azure_cfg):
-    blob_service_client = BlobServiceClient.from_connection_string(azure_cfg['conn_str'])
+    blob_service_client = BlobServiceClient.from_connection_string(azure_cfg['storage_acct']['conn_str'])
     container_client = blob_service_client.get_container_client(azure_cfg['container']['data']['name'])
     logging.info(f"Connected to: {container_client.url}")
     logging.info(f"- retrieving blobs from container '{azure_cfg['container']['data']['name']}' in directory '{azure_cfg['container']['data']['input_dir']}'")
@@ -175,10 +175,10 @@ def create_cfg_dict(args):
 
     return {
         "azure": {
-            "conn_str": conn_str,
             "storage_acct": {
                 "name": storage_acct_name,
                 "key": storage_acct_key,
+                "conn_str": conn_str,
             },
             "container": {
                 "data": {
@@ -187,7 +187,7 @@ def create_cfg_dict(args):
                 },
                 "warehouse": {
                     "name": args.warehouse_container,
-                    "url": f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}/{args.table}"
+                    "url": f"abfs://{args.warehouse_container}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}/{args.table}"
                 }
             }
         },

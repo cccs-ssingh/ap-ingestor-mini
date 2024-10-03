@@ -127,10 +127,10 @@ def parse_cmd_line_args(args, kwargs):
     # Azure config arguments
     #  Input
     arg_parser.add_argument('--data_container', default="data",
-                        help="Azure Storage container name for raw data (default: 'data')")
-    arg_parser.add_argument('--raw_data_dir', required=True, help="Raw data directory in Azure Storage")
+                        help="Azure Storage container name for input data (default: 'data')")
+    arg_parser.add_argument('--input_data_dir', required=True, help="Raw data directory in Azure Storage")
     arg_parser.add_argument('--file_type', required=True,
-                        help="File type of the raw data (e.g., 'csv', 'parquet', 'json', 'xml', 'avro')")
+                        help="File type of the input data (e.g., 'csv', 'parquet', 'json', 'xml', 'avro')")
     #  Output
     arg_parser.add_argument('--catalog', required=True, help="Spark catalog name")
     arg_parser.add_argument('--warehouse_container', default="warehouse",
@@ -181,7 +181,7 @@ def create_cfg_dict(args):
             "container": {
                 "data": {
                     "name": args.data_container,
-                    "input_dir": args.raw_data_dir
+                    "input_dir": args.input_data_dir
                 },
                 "warehouse": {
                     "name": args.warehouse_container,

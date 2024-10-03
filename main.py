@@ -52,6 +52,7 @@ def create_spark_session(warehouse_url, k8s_config, driver_config, storage_acct_
     # # Set log level to ERROR to minimize logging
     # spark.sparkContext.setLogLevel("ERROR")
 
+    logging.info('- success')
     return spark
 
 
@@ -201,17 +202,20 @@ def run(*args, **kwargs):
 
     # Create Spark session with driver configs and Kubernetes mode support
     warehouse_url = f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}"
-    logging.info(f"Output warehouse url: {warehouse_url}")
+    # logging.info(f"Output warehouse url: {warehouse_url}")
     spark = create_spark_session(warehouse_url, k8s_config, driver_config, storage_acct_name, storage_acct_key)
 
     # test azure connection
+    test_warehouse_url = f"abfs://{args.warehouse_container_name}@{storage_acct_name}.dfs.core.windows.net/iceberg/test/ingestor_mini"
+    logging.info(f"Output warehouse url: {warehouse_url}")
+    logging.info(f'Testing writing to warehouse:{test_warehouse_url}')
     df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
     df.write.csv(warehouse_url)
 
     # Ingest files into Iceberg table
+    logging.info(f"Ingesting to iceberg table in {test_warehouse_url}")
     ingest_to_iceberg(spark, input_files, args.table_name, args.file_type, args.xml_row_tag)
-
-    logging.info(f"Successfully ingested data into Iceberg table: {args.table_name}")
+    logging.info(f"- successfully ingested data into Iceberg table: {args.table_name}")
 
 
 if __name__ == "__main__":

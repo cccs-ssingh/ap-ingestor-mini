@@ -114,12 +114,7 @@ def ingest_to_iceberg(spark, blob_urls, table_name, file_type, xml_row_tag=None)
     # Read the data based on the file type
     df = read_data(spark, blob_urls, file_type, xml_row_tag)
 
-    # Validate the table name
-    if not table_name or table_name.strip() == "":
-        raise ValueError("Table name cannot be empty.")
-    if '.' in table_name:
-        raise ValueError("Table name must be a single-part namespace (no periods).")
-
+    # Write the dataframe
     logging.info(f"Ingesting data into Iceberg table: {table_name}")
     df.writeTo(f"hogwarts_u.test.{table_name}") \
         .option("merge-schema", "true") \
@@ -230,7 +225,7 @@ def run(*args, **kwargs):
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(spark, azure_blob_urls, cfg['spark']['table'], args.file_type, args.xml_row_tag)
-    logging.info(f"- successfully ingested data into Iceberg table: {args.table_name}")
+    logging.info(f"- successfully ingested data into Iceberg table: {args.table}")
 
 
 if __name__ == "__main__":

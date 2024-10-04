@@ -31,7 +31,7 @@ def create_spark_session(az_cfg, spark_cfg):
 
     # .config(f"spark.sql.catalog.{spark_cfg['catalog']}.warehouse", az_cfg['container']['warehouse']['url']) \
     # warehouse_url = "abfs://<your-container>@<your-storage-account>.dfs.core.windows.net/<warehouse-dir>"
-    warehouse_url = "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json"
+    warehouse_url = "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg"
 
     # .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['storage_acct']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
 
@@ -148,10 +148,11 @@ def parse_cmd_line_args(args, kwargs):
                         help="File type of the input data (e.g., 'csv', 'parquet', 'json', 'xml', 'avro')")
     #  Output
     arg_parser.add_argument('--catalog', required=True, help="Spark catalog name")
+    arg_parser.add_argument('--database', required=True, help="Spark catalog database name")
+    arg_parser.add_argument('--table', required=True, help="Target Iceberg table name")
     arg_parser.add_argument('--warehouse_container', default="warehouse",
                         help="Azure Storage container name for Iceberg warehouse (default: 'warehouse')")
     arg_parser.add_argument('--warehouse_dir', required=True, help="Warehouse directory for Iceberg tables")
-    arg_parser.add_argument('--table', required=True, help="Target Iceberg table name")
     arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format (only required if file_type is 'xml')")
 
     # Kubernetes mode config arguments
@@ -207,6 +208,7 @@ def create_cfg_dict(args):
         },
         "spark": {
             "catalog": args.catalog,
+            "database": args.database,
             "table": args.table,
             "k8s": {
                 "spark_image": args.k8s_spark_image,

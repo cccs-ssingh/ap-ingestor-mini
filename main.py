@@ -36,7 +36,7 @@ def create_spark_session(az_cfg, spark_cfg):
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
-        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{az_cfg['container']['warehouse']['name']}", {az_cfg['container']['warehouse']['url']}) \
+        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{az_cfg['container']['warehouse']['name']}", az_cfg['container']['warehouse']['url']) \
         .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
         .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['container']['data']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support

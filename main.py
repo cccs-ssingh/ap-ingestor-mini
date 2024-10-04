@@ -117,13 +117,13 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
 
-    # test azure connection
-    test_warehouse_url = azure_cfg['container']['warehouse']['url']
-    # test_warehouse_url = f"abfs://warehouse@{azure_cfg['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/ingestor_mini"
-    logging.info(f'Testing writing to warehouse: {test_warehouse_url}')
-    df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
-    df.write.csv(test_warehouse_url)
-    logging.info('- success')
+    # # test azure connection
+    # test_warehouse_url = azure_cfg['container']['warehouse']['url']
+    # # test_warehouse_url = f"abfs://warehouse@{azure_cfg['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/ingestor_mini"
+    # logging.info(f'Testing writing to warehouse: {test_warehouse_url}')
+    # df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
+    # df.write.csv(test_warehouse_url)
+    # logging.info('- success')
 
     # Read the data based on the file type
     df = read_data(spark, blob_urls, file_type, xml_row_tag)

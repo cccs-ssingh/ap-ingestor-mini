@@ -53,9 +53,12 @@ def create_spark_session(az_cfg, spark_cfg):
     # # Set log level to ERROR to minimize logging
     # spark.sparkContext.setLogLevel("ERROR")
 
-    # Print all Spark configurations
-    for key, value in spark.sparkContext.getConf():
-        logging.info(f"{key} = {value}")
+    # Print all Spark configurations using SparkContext
+    conf = spark.sparkContext.getConf()
+
+    # Use getAll() to retrieve configurations as a list of tuples
+    for key, value in conf.getAll():
+        print(f"{key}: {value}")
 
     logging.info('- success')
     return spark

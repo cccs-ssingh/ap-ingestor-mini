@@ -26,7 +26,7 @@ def parse_connection_string(conn_str):
 def create_spark_session(az_cfg, spark_cfg):
     logging.info("Creating Spark session")
     logging.info(f"- warehouse url: {az_cfg['container']['warehouse']['url']}")
-    # .config(f"spark.sql.catalog.{spark_cfg['catalog']}.dir", az_cfg['container']['warehouse']['dir']) \
+
 
         # Basic Spark session configuration
     spark_builder = SparkSession.builder \
@@ -38,6 +38,7 @@ def create_spark_session(az_cfg, spark_cfg):
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{az_cfg['container']['warehouse']['name']}", az_cfg['container']['warehouse']['url']) \
+        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.dir", az_cfg['container']['warehouse']['dir']) \
         .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
         .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['storage_acct']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
@@ -231,6 +232,12 @@ def run(*args, **kwargs):
 
     # Create Spark session
     spark = create_spark_session(cfg['azure'], cfg['spark'])
+
+    # test azure connection
+    test_warehouse_url = f"abfs://warehouse@{cfg['azure']['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/ingestor_mini"
+    logging.info(f'Testing writing to warehouse:{test_warehouse_url}')
+    df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
+    df.write.csv(test_warehouse_url)
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(spark, cfg['spark'], azure_blob_urls, args.file_type, args.xml_row_tag)

@@ -35,6 +35,7 @@ def create_spark_session(az_cfg, spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
+        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.dir", {az_cfg['container']['warehouse']['dir']}) \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{az_cfg['container']['warehouse']['name']}", az_cfg['container']['warehouse']['url']) \
         .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
@@ -58,7 +59,7 @@ def create_spark_session(az_cfg, spark_cfg):
 
     # Use getAll() to retrieve configurations as a list of tuples
     for key, value in conf.getAll():
-        print(f"{key}: {value}")
+        logging.debug(f"{key}: {value}")
 
     logging.info('- success')
     return spark
@@ -188,6 +189,7 @@ def create_cfg_dict(args):
                 },
                 "warehouse": {
                     "name": args.warehouse_container,
+                    "dir": args.warehouse_dir,
                     "url": f"abfs://{args.warehouse_container}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}/{args.table}"
                 }
             }

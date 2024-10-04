@@ -36,6 +36,7 @@ def create_spark_session(az_cfg, spark_cfg):
     # .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['storage_acct']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
     #         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
     #         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
+    #         .config(f"spark.hadoop.fs.azure.account.key.apdatalakeudatafeeds.blob.core.windows.net", az_cfg['storage_acct']['key']) \
 
     # Spark session configuration
     spark_builder = SparkSession.builder \
@@ -45,7 +46,6 @@ def create_spark_session(az_cfg, spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.warehouse", warehouse_url) \
-        .config(f"spark.hadoop.fs.azure.account.key.apdatalakeudatafeeds.blob.core.windows.net", az_cfg['storage_acct']['key']) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
     if spark_cfg['k8s']['name_space']:

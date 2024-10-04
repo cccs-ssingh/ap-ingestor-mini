@@ -111,8 +111,8 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
 
     # test azure connection
-    test_warehouse_url = f"abfs://warehouse@{azure_cfg['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/ingestor_mini"
-    logging.info(f'Testing writing to warehouse:{test_warehouse_url}')
+    test_warehouse_url = f"abfs://warehouse@{azure_cfg['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/kaspersky_json"
+    logging.info(f'Testing writing to warehouse: {test_warehouse_url}')
     df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
     df.write.csv(test_warehouse_url)
 

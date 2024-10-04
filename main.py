@@ -56,10 +56,9 @@ def create_spark_session(az_cfg, spark_cfg):
 
     # Print all Spark configurations using SparkContext
     conf = spark.sparkContext.getConf()
-
     # Use getAll() to retrieve configurations as a list of tuples
     for key, value in conf.getAll():
-        logging.debug(f"{key}: {value}")
+        logging.warning(f"{key}: {value}")
 
     logging.info('- success')
     return spark

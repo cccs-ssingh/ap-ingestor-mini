@@ -180,7 +180,7 @@ def create_cfg_dict(args):
             "container": {
                 "input": {
                     "name": args.azure_container_input_name,
-                    "input_dir": args.azure_container_input_dir
+                    "dir": args.azure_container_input_dir
                 },
                 "output": {
                     "name": args.azure_container_output_name,

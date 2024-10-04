@@ -46,7 +46,6 @@ def create_spark_session(az_cfg, spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(f"spark.sql.catalog.apdatalakeudatafeeds.warehouse", warehouse_url) \
-        .config(f"spark.sql.catalog.apdatalakeudatafeeds.dir", warehouse_url) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
     if spark_cfg['k8s']['name_space']:
@@ -115,13 +114,13 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
 
-    # # test azure connection
-    # test_warehouse_url = azure_cfg['container']['warehouse']['url']
-    # # test_warehouse_url = f"abfs://warehouse@{azure_cfg['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/ingestor_mini"
-    # logging.info(f'Testing writing to warehouse: {test_warehouse_url}')
-    # df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
-    # df.write.csv(test_warehouse_url)
-    # logging.info('- success')
+    # test azure connection
+    test_warehouse_url = azure_cfg['container']['warehouse']['url']
+    # test_warehouse_url = f"abfs://warehouse@{azure_cfg['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/ingestor_mini"
+    logging.info(f'Testing writing to warehouse: {test_warehouse_url}')
+    df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
+    df.write.csv(test_warehouse_url)
+    logging.info('- success')
 
     # Read the data based on the file type
     df = read_data(spark, blob_urls, file_type, xml_row_tag)
@@ -131,6 +130,8 @@ def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
     # df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
     df.writeTo(f"hogwarts_u.test.kaspersky_json") \
         .option("merge-schema", "true") \
+        .option("write.data.path", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json/data") \
+        .option("write.metadata.path", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json/metadata") \
         .createOrReplace()
     logging.info("- data ingested successfully")
 

@@ -63,7 +63,7 @@ def create_spark_session(spark_cfg):
 
 # Function to list blobs in a directory from Azure Blob Storage using connection string
 def list_blobs_in_directory(azure_cfg):
-    blob_service_client = BlobServiceClient.from_connection_string(azure_cfg['storage_acct']['conn_str'])
+    blob_service_client = BlobServiceClient.from_connection_string(azure_cfg['storage_account']['conn_str'])
     container_client = blob_service_client.get_container_client(azure_cfg['container']['input']['name'])
     logging.info(f"Connected to: {container_client.url}")
     logging.info(f"- retrieving blobs from container '{azure_cfg['container']['input']['name']}' in directory '{azure_cfg['container']['input']['dir']}'")
@@ -110,7 +110,7 @@ def ingest_to_iceberg(spark, azure_cfg, files_to_process, file_type, xml_row_tag
     df = read_data(spark, files_to_process, file_type, xml_row_tag)
 
     # Write the dataframe
-    logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['output']['url']}")
+    logging.info(f"Ingesting data into Iceberg table: abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json")
     df.writeTo(f"hogwarts_u.test.kaspersky_json") \
         .option("merge-schema", "true") \
         .tableProperty("location", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json") \
@@ -168,13 +168,13 @@ def extract_conn_str_from_env_vars():
 
 def create_cfg_dict(args):
     conn_str = extract_conn_str_from_env_vars()
-    storage_acct_name, storage_acct_key = parse_connection_string(conn_str)
+    storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     return {
         "azure": {
-            "storage_acct": {
-                # "name": storage_acct_name,
-                # "key": storage_acct_key,
+            "storage_account": {
+                # "name": storage_account_name,
+                # "key": storage_account_key,
                 "conn_str": conn_str,
             },
             "container": {
@@ -185,7 +185,7 @@ def create_cfg_dict(args):
                 "output": {
                     "name": args.azure_container_output_name,
                     "dir": args.azure_container_output_name,
-                    # "url": f"abfs://{args.warehouse_container}@{storage_acct_name}.dfs.core.windows.net/{args.warehouse_dir}/{args.table}"
+                    # "url": f"abfs://{args.warehouse_container}@{storage_account_name}.dfs.core.windows.net/{args.warehouse_dir}/{args.table}"
                 }
             }
         },

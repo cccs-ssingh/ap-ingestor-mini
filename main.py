@@ -38,6 +38,8 @@ def create_spark_session(az_cfg, spark_cfg):
     #         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
     #         .config(f"spark.hadoop.fs.azure.account.key.apdatalakeudatafeeds.blob.core.windows.net", az_cfg['storage_acct']['key']) \
 
+    rest_catalog_url = 'http://rest-catalog.rest-catalog.svc.cluster.local:8080/hogwarts_u'
+
     # Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion with Azure Storage") \
@@ -45,6 +47,7 @@ def create_spark_session(az_cfg, spark_cfg):
         .config(            "spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
+        .config("spark.sql.catalog.catalog_b.uri", rest_catalog_url) \
         .config(f"spark.sql.catalog.apdatalakeudatafeeds.warehouse", warehouse_url) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
@@ -130,9 +133,10 @@ def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
     # df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
     df.writeTo(f"hogwarts_u.test.kaspersky_json") \
         .option("merge-schema", "true") \
-        .option("write.data.path", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json/data") \
-        .option("write.metadata.path", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json/metadata") \
+        .tableProperty("location", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json") \
         .createOrReplace()
+    # .option("write.data.path", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json/data") \
+    # .option("write.metadata.path", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json/metadata") \
     logging.info("- data ingested successfully")
 
 def parse_cmd_line_args(args, kwargs):

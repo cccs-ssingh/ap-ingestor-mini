@@ -110,7 +110,7 @@ def ingest_to_iceberg(spark, azure_cfg, files_to_process, file_type, xml_row_tag
     df = read_data(spark, files_to_process, file_type, xml_row_tag)
 
     # Write the dataframe
-    logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['warehouse']['url']}")
+    logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['output']['url']}")
     df.writeTo(f"hogwarts_u.test.kaspersky_json") \
         .option("merge-schema", "true") \
         .tableProperty("location", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json") \

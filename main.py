@@ -88,8 +88,8 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
     elif file_type == "parquet":
         df = spark.read.parquet(input_files)
     elif file_type == "json":
-        # df = spark.read.json(input_files)
-        df = spark.read.option("multiLine", "true").json(input_files)
+        df = spark.read.json(input_files)
+        # df = spark.read.option("multiLine", "true").json(input_files)
     elif file_type == "xml":
         if not xml_row_tag:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
@@ -111,20 +111,23 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
 
     # test azure connection
-    test_warehouse_url = f"abfs://warehouse@{azure_cfg['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/kaspersky_json"
+    test_warehouse_url = azure_cfg['container']['warehouse']['url']
+    # test_warehouse_url = f"abfs://warehouse@{azure_cfg['storage_acct']['name']}.dfs.core.windows.net/iceberg/test/ingestor_mini"
     logging.info(f'Testing writing to warehouse: {test_warehouse_url}')
     df = spark.createDataFrame([(1, 'test')], ['id', 'value'])
     df.write.csv(test_warehouse_url)
+    logging.info('- success')
 
     # Read the data based on the file type
     df = read_data(spark, blob_urls, file_type, xml_row_tag)
 
-    # # Write the dataframe
-    # logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['warehouse']['url']}")
-    # # df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
-    # df.writeTo(azure_cfg['container']['warehouse']['url']) \
-    #     .option("merge-schema", "true") \
-    #     .createOrReplace()
+    # Write the dataframe
+    logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['warehouse']['url']}")
+    # df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
+    df.writeTo(azure_cfg['container']['warehouse']['url']) \
+        .option("merge-schema", "true") \
+        .createOrReplace()
+    logging.info("- success")
 
 def parse_cmd_line_args(args, kwargs):
 

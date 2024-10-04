@@ -54,11 +54,12 @@ def create_spark_session(az_cfg, spark_cfg):
     # # Set log level to ERROR to minimize logging
     # spark.sparkContext.setLogLevel("ERROR")
 
+    logging.info('- spark session created')
+
     # Print spark config
     for key, value in spark.sparkContext.getConf().getAll():
         logging.warning(f"{key}: {value}")
 
-    logging.info('- success')
     return spark
 
 
@@ -121,10 +122,10 @@ def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
     # Write the dataframe
     logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['warehouse']['url']}")
     # df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
-    df.write(f"hogwarts_u.test.kaspersky_json") \
+    df.writeTo(f"hogwarts_u.test.kaspersky_json") \
         .option("merge-schema", "true") \
         .createOrReplace()
-    logging.info("- success")
+    logging.info("- data ingested successfully")
 
 def parse_cmd_line_args(args, kwargs):
 

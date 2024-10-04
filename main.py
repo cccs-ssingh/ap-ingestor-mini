@@ -64,14 +64,14 @@ def create_spark_session(spark_cfg):
 # Function to list blobs in a directory from Azure Blob Storage using connection string
 def list_blobs_in_directory(azure_cfg):
     blob_service_client = BlobServiceClient.from_connection_string(azure_cfg['storage_acct']['conn_str'])
-    container_client = blob_service_client.get_container_client(azure_cfg['container']['data']['name'])
+    container_client = blob_service_client.get_container_client(azure_cfg['container']['input']['name'])
     logging.info(f"Connected to: {container_client.url}")
-    logging.info(f"- retrieving blobs from container '{azure_cfg['container']['data']['name']}' in directory '{azure_cfg['container']['data']['input_dir']}'")
-    blobs = container_client.list_blobs(name_starts_with=azure_cfg['container']['data']['input_dir'])
+    logging.info(f"- retrieving blobs from container '{azure_cfg['container']['input']['name']}' in directory '{azure_cfg['container']['input']['dir']}'")
+    blobs = container_client.list_blobs(name_starts_with=azure_cfg['container']['input']['dir'])
 
     blob_urls = []
     for blob in blobs:
-        blob_url = f"abfs://{azure_cfg['container']['data']['name']}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
+        blob_url = f"abfs://{azure_cfg['container']['input']['name']}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         blob_urls.append(blob_url)
     logging.info(f"- {len(blob_urls)} blobs total")
 

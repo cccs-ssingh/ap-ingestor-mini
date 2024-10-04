@@ -119,12 +119,12 @@ def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
     # Read the data based on the file type
     df = read_data(spark, blob_urls, file_type, xml_row_tag)
 
-    # Write the dataframe
-    logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['warehouse']['url']}")
-    # df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
-    df.writeTo(azure_cfg['container']['warehouse']['url']) \
-        .option("merge-schema", "true") \
-        .createOrReplace()
+    # # Write the dataframe
+    # logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['warehouse']['url']}")
+    # # df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
+    # df.writeTo(azure_cfg['container']['warehouse']['url']) \
+    #     .option("merge-schema", "true") \
+    #     .createOrReplace()
 
 def parse_cmd_line_args(args, kwargs):
 

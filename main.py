@@ -28,10 +28,12 @@ def create_spark_session(az_cfg, spark_cfg):
     # logging.info(f"- warehouse url: {az_cfg['container']['warehouse']['url']}")
     # .config(f"spark.sql.catalog.{spark_cfg['catalog']}.dir", az_cfg['container']['warehouse']['dir']) \
     # .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
-    # .config(f"spark.sql.catalog.{spark_cfg['catalog']}.warehouse", az_cfg['container']['warehouse']['url']) \
 
+    # .config(f"spark.sql.catalog.{spark_cfg['catalog']}.warehouse", az_cfg['container']['warehouse']['url']) \
     # warehouse_url = "abfs://<your-container>@<your-storage-account>.dfs.core.windows.net/<warehouse-dir>"
     warehouse_url = "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json"
+
+    # .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['storage_acct']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
 
     # Spark session configuration
     spark_builder = SparkSession.builder \
@@ -43,7 +45,7 @@ def create_spark_session(az_cfg, spark_cfg):
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.warehouse", warehouse_url) \
-        .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['storage_acct']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
+        .config(f"spark.hadoop.fs.azure.account.key.apdatalakeudatafeeds.blob.core.windows.net", az_cfg['storage_acct']['key']) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
     if spark_cfg['k8s']['name_space']:

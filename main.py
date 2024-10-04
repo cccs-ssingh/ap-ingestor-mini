@@ -240,7 +240,7 @@ def run(*args, **kwargs):
     spark = create_spark_session(cfg['azure'], cfg['spark'])
 
     # Ingest files into Iceberg table
-    ingest_to_iceberg(spark, cfg['spark'], azure_blob_urls, args.file_type, args.xml_row_tag)
+    ingest_to_iceberg(spark, cfg['azure'], azure_blob_urls, args.file_type, args.xml_row_tag)
     logging.info(f"- successfully ingested data into Iceberg table: {args.table}")
 
 

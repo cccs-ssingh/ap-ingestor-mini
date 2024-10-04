@@ -27,18 +27,18 @@ def create_spark_session(az_cfg, spark_cfg):
     logging.info("Creating Spark session")
     # logging.info(f"- warehouse url: {az_cfg['container']['warehouse']['url']}")
     # .config(f"spark.sql.catalog.{spark_cfg['catalog']}.dir", az_cfg['container']['warehouse']['dir']) \
+    # .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
 
-    # Basic Spark session configuration
+    # Spark session configuration
     spark_builder = SparkSession.builder \
-        .appName("Iceberg Ingestion from Azure") \
+        .appName("Iceberg Ingestion with Azure Storage") \
         .config(             "spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
         .config(            "spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
-        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{az_cfg['container']['warehouse']['name']}", az_cfg['container']['warehouse']['url']) \
-        .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
+        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.warehouse", az_cfg['container']['warehouse']['url']) \
         .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['storage_acct']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
@@ -121,7 +121,7 @@ def ingest_to_iceberg(spark, azure_cfg, blob_urls, file_type, xml_row_tag=None):
     # Write the dataframe
     logging.info(f"Ingesting data into Iceberg table: {azure_cfg['container']['warehouse']['url']}")
     # df.writeTo(f"{spark_cfg['catalog']}.{spark_cfg['table']}") \
-    df.write(azure_cfg['container']['warehouse']['url']) \
+    df.write(f"hogwarts_u.test.kaspersky_json") \
         .option("merge-schema", "true") \
         .createOrReplace()
     logging.info("- success")

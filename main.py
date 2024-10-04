@@ -26,8 +26,9 @@ def parse_connection_string(conn_str):
 def create_spark_session(az_cfg, spark_cfg):
     logging.info("Creating Spark session")
     logging.info(f"- warehouse url: {az_cfg['container']['warehouse']['url']}")
+    # .config(f"spark.sql.catalog.{spark_cfg['catalog']}.dir", az_cfg['container']['warehouse']['dir']) \
 
-    # Basic Spark session configuration
+        # Basic Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion from Azure") \
         .config(             "spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
@@ -35,11 +36,10 @@ def create_spark_session(az_cfg, spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}", "org.apache.iceberg.spark.SparkCatalog") \
-        .config(f"spark.sql.catalog.{spark_cfg['catalog']}.dir", az_cfg['container']['warehouse']['dir']) \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.type", "hadoop") \
         .config(f"spark.sql.catalog.{spark_cfg['catalog']}.{az_cfg['container']['warehouse']['name']}", az_cfg['container']['warehouse']['url']) \
         .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
-        .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['container']['data']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
+        .config(f"spark.hadoop.fs.azure.account.key.{az_cfg['storage_acct']['name']}.blob.core.windows.net", az_cfg['storage_acct']['key']) \
         .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
     if spark_cfg['k8s']['name_space']:
@@ -54,10 +54,8 @@ def create_spark_session(az_cfg, spark_cfg):
     # # Set log level to ERROR to minimize logging
     # spark.sparkContext.setLogLevel("ERROR")
 
-    # Print all Spark configurations using SparkContext
-    conf = spark.sparkContext.getConf()
-    # Use getAll() to retrieve configurations as a list of tuples
-    for key, value in conf.getAll():
+    # Print spark config
+    for key, value in spark.sparkContext.getConf().getAll():
         logging.warning(f"{key}: {value}")
 
     logging.info('- success')

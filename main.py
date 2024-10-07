@@ -33,7 +33,7 @@ def create_spark_session(spark_cfg):
         .config(            "spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
-        .config("              spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
+        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") # xml support
 
     if spark_cfg['k8s']['name_space']:
         logging.info("- configuring spark for Kubernetes mode.")
@@ -109,7 +109,9 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
     # logging.info(f"Ingesting data into Iceberg table: abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json")
     logging.info(f"Ingesting data into Iceberg table: {ice_cfg['table']['location']}")
     # df.writeTo(f"hogwarts_u.test.kaspersky_json") \
-    df.writeTo(f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']}") \
+    catalog_location = f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']['name']}"
+    logging.info(catalog_location)
+    df.writeTo(catalog_location) \
         .option("merge-schema", "true") \
         .tableProperty("location", ice_cfg['table']['location']) \
         .createOrReplace()
@@ -131,12 +133,12 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--azure_container_input_name', default="data", help="Input data container name")
     arg_parser.add_argument('--azure_container_input_dir', required=True, help="Raw data directory in Azure Storage")
     #   Output
-    arg_parser.add_argument('--azure_container_output_name', default="data", help="Input data container name")
+    arg_parser.add_argument('--azure_container_output_name', default="warehouse", help="Input data container name")
     arg_parser.add_argument('--azure_container_output_dir', default="iceberg", help="Warehouse directory for Iceberg tables")
 
     # Iceberg
-    arg_parser.add_argument('--iceberg_catalog', required=True, help="Iceberg catalog name")
-    arg_parser.add_argument('--iceberg_namespace', required=True, help="Iceberg namespace name")
+    arg_parser.add_argument('--iceberg_catalog', required=True, help="Target Iceberg catalog name")
+    arg_parser.add_argument('--iceberg_namespace', required=True, help="Target Iceberg namespace name")
     arg_parser.add_argument('--iceberg_table', required=True, help="Target Iceberg table name")
 
     # File Specific details

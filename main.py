@@ -111,7 +111,7 @@ def format_size(bytes_size):
 def get_latest_snapshot(spark, iceberg_table):
     snapshots_df = spark.read.format("iceberg").load(f"{iceberg_table}.snapshots")
     latest_snapshot = snapshots_df.orderBy(snapshots_df["committed_at"].desc()).first()
-    return latest_snapshot["snapshot_id"] if latest_snapshot else None
+    return latest_snapshot["added_snapshot_id"] if latest_snapshot else None
 
 # Retrieve the new files between two snapshots
 def get_new_files(spark, iceberg_table, pre_snapshot, post_snapshot):

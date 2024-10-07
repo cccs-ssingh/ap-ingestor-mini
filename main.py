@@ -35,7 +35,6 @@ def create_spark_session(spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config("spark.jars.ivy", "/path/to/ivy/cache") \
         .config("spark.driver.extraJavaOptions", "-Divy.message.logger.level=ERROR") \
         .config("spark.executor.extraJavaOptions", "-Divy.message.logger.level=ERROR") \
 

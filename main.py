@@ -118,9 +118,9 @@ def get_new_files(spark, iceberg_table, pre_snapshot, post_snapshot):
     if not pre_snapshot or not post_snapshot:
         return [], 0
 
-    # Query the manifests for the new snapshot
+    # Query the manifests for the new snapshot using 'added_snapshot_id'
     manifests_df = spark.read.format("iceberg").load(f"{iceberg_table}.manifests")
-    new_manifest_files = manifests_df.filter(manifests_df["snapshot_id"] == post_snapshot).select("path", "length")
+    new_manifest_files = manifests_df.filter(manifests_df["added_snapshot_id"] == post_snapshot).select("path", "length")
 
     # Collect the new files
     new_files = new_manifest_files.select("path").collect()

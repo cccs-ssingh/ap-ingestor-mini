@@ -73,7 +73,6 @@ def list_blobs_in_directory(azure_cfg):
 
     return blob_urls
 
-
 # Function to read data based on the file type
 def read_data(spark, input_files, file_type, xml_row_tag=None):
     if file_type == "csv":
@@ -108,22 +107,47 @@ def format_size(bytes_size):
             return f"{bytes_size:.2f} {unit}"
         bytes_size /= 1024
 
+# Retrieve the latest snapshot for an Iceberg table
+def get_latest_snapshot(spark, iceberg_table):
+    snapshots_df = spark.read.format("iceberg").load(f"{iceberg_table}.snapshots")
+    latest_snapshot = snapshots_df.orderBy(snapshots_df["committed_at"].desc()).first()
+    return latest_snapshot["snapshot_id"] if latest_snapshot else None
+
+# Retrieve the new files between two snapshots
+def get_new_files(spark, iceberg_table, pre_snapshot, post_snapshot):
+    if not pre_snapshot or not post_snapshot:
+        return [], 0
+
+    # Query the manifests for the new snapshot
+    manifests_df = spark.read.format("iceberg").load(f"{iceberg_table}.manifests")
+    new_manifest_files = manifests_df.filter(manifests_df["snapshot_id"] == post_snapshot).select("path", "length")
+
+    # Collect the new files
+    new_files = new_manifest_files.select("path").collect()
+    total_size = new_manifest_files.select("length").rdd.map(lambda row: row[0]).sum()
+
+    return new_files, total_size
 
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=None):
+    iceberg_table  = f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']['name']}"
+
+    # Get the snapshot before the write
+    pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # Read the data based on the file type
     df = read_data(spark, files_to_process, file_type, xml_row_tag)
 
     # Write the dataframe
-    catalog_location = f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']['name']}"
-    logging.info(f"Ingesting data into: Iceberg table: {ice_cfg['table']['location']}")
-    logging.info(f"- Catalog Location: {catalog_location}")
-    logging.info(f"- Iceberg Table: {ice_cfg['table']['location']}")
+    logging.info(f"Ingesting data:")
+    logging.info(f"- Azure url: {ice_cfg['table']['location']}")
+    logging.info(f"- Iceberg Table: {iceberg_table }")
+
     # Start timing
     start_time = time.time()
 
-    df.writeTo(catalog_location) \
+    # Write the DataFrame to the Iceberg table
+    df.writeTo(iceberg_table ) \
         .option("merge-schema", "true") \
         .tableProperty("location", ice_cfg['table']['location']) \
         .createOrReplace()
@@ -131,24 +155,22 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
     # Calculate time taken
     time_taken = time.time() - start_time
 
+    # Get the snapshot after the write
+    post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+
+    # Get the new files written during the current operation
+    new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
+
     # Get the number of records written
     record_count = df.count()
 
-    # Fetch metadata about the written files
-    metadata_df = spark.read.format("iceberg").load(catalog_location)
-
-    # Number of files and total size in bytes
-    total_files = metadata_df.select("file_path").distinct().count()
-    total_size = metadata_df.select("file_size_in_bytes").rdd.map(lambda row: row[0]).sum()
-
-    # Format the total size to a human-readable format (B, KB, MB, GB)
+    # Format the total size to a human-readable format
     formatted_size = format_size(total_size)
 
     # Log metrics
     logging.info('Success!')
     logging.info(f'- {record_count} records')
-    logging.info(f'- {total_files} file(s)')
-    logging.info(f'- {formatted_size} were written to {catalog_location}')
+    logging.info(f'- {len(new_files)} file(s)')
     logging.info(f'- {time_taken:.2f} seconds')
 
 # Azure Connection string from env var

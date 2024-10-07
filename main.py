@@ -25,13 +25,8 @@ def parse_connection_string(conn_str):
 # Function to create Spark session with Iceberg and XML support
 def create_spark_session(spark_cfg):
     logging.info("Creating Spark session")
-    # warehouse_url = "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg"
-    # .config(f"spark.sql.catalog.apdatalakeudatafeeds.warehouse", warehouse_url) \
 
-    # rest_catalog_url = 'http://rest-catalog.rest-catalog.svc.cluster.local:8080/hogwarts_u'
-    # .config("spark.sql.catalog.catalog_b.uri", rest_catalog_url) \
-
-        # Spark session configuration
+    # Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion with Azure Storage") \
         .config(             "spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
@@ -87,7 +82,10 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
     elif file_type == "json":
         # df = spark.read.json(input_files)
         df = spark.read.option("multiLine", "true").json(input_files)
+    elif file_type == "avro":
+        df = spark.read.format("avro").load(input_files)
     elif file_type == "xml":
+        # databricks library
         if not xml_row_tag:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
         df = (
@@ -95,8 +93,6 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
             .option("rowTag", xml_row_tag)
             .load(input_files)
         )
-    elif file_type == "avro":
-        df = spark.read.format("avro").load(input_files)
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
 
@@ -104,27 +100,37 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 
 
 # Function to ingest raw data into an Iceberg table dynamically
-def ingest_to_iceberg(spark, azure_cfg, files_to_process, file_type, xml_row_tag=None):
+def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=None):
 
     # Read the data based on the file type
     df = read_data(spark, files_to_process, file_type, xml_row_tag)
 
     # Write the dataframe
-    logging.info(f"Ingesting data into Iceberg table: abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json")
-    df.writeTo(f"hogwarts_u.test.kaspersky_json") \
+    # logging.info(f"Ingesting data into Iceberg table: abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json")
+    logging.info(f"Ingesting data into Iceberg table: {ice_cfg['table']['location']}")
+    # df.writeTo(f"hogwarts_u.test.kaspersky_json") \
+    df.writeTo(f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']}") \
         .option("merge-schema", "true") \
-        .tableProperty("location", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json") \
+        .tableProperty("location", {ice_cfg['table']['location']}) \
         .createOrReplace()
+
+    # .tableProperty("location", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json") \
     logging.info("- data ingested successfully")
+
+# Azure Connection string from env var
+def extract_conn_str_from_env_vars():
+    for key, value in os.environ.items():
+        if key.endswith('CONN_STR'):
+            return value
 
 def parse_cmd_line_args(args, kwargs):
     arg_parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
 
     # Azure
-    #       Input
+    #   Input
     arg_parser.add_argument('--azure_container_input_name', default="data", help="Input data container name")
     arg_parser.add_argument('--azure_container_input_dir', required=True, help="Raw data directory in Azure Storage")
-    #       Output
+    #   Output
     arg_parser.add_argument('--azure_container_output_name', default="data", help="Input data container name")
     arg_parser.add_argument('--azure_container_output_dir', default="iceberg", help="Warehouse directory for Iceberg tables")
 
@@ -138,33 +144,24 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format ")
 
     # Spark
-    #       Driver
+    #   Driver
     arg_parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
     arg_parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
     arg_parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
     arg_parser.add_argument('--spark_sql_files_maxPartitionBytes', default="512m", help="Max partition bytes for Spark SQL files")
 
-    #       Kubernetes mode
+    #   Kubernetes mode
     arg_parser.add_argument('--k8s_name_space', help="Kubernetes name space")
     arg_parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
 
     if kwargs and "run_args" in kwargs["context"]:
-        # parse airflow args via kwargs
         arg_parser = arg_parser.parse_args(kwargs["context"]["run_args"])
     elif args and len(args) > 0:
-        # parse airflow args via args
         arg_parser = arg_parser.parse_args(args)
     else:
-        # parse local args
         arg_parser = arg_parser.parse_args()
 
     return arg_parser
-
-# Azure Connection string from env var
-def extract_conn_str_from_env_vars():
-    for key, value in os.environ.items():
-        if key.endswith('CONN_STR'):
-            return value
 
 def create_cfg_dict(args):
     conn_str = extract_conn_str_from_env_vars()
@@ -173,7 +170,7 @@ def create_cfg_dict(args):
     return {
         "azure": {
             "storage_account": {
-                # "name": storage_account_name,
+                "name": storage_account_name,
                 # "key": storage_account_key,
                 "conn_str": conn_str,
             },
@@ -184,15 +181,17 @@ def create_cfg_dict(args):
                 },
                 "output": {
                     "name": args.azure_container_output_name,
-                    "dir": args.azure_container_output_name,
-                    # "url": f"abfs://{args.warehouse_container}@{storage_account_name}.dfs.core.windows.net/{args.warehouse_dir}/{args.table}"
+                    "dir": args.azure_container_output_dir,
                 }
             }
         },
         "iceberg": {
             "catalog": args.iceberg_catalog,
             "namespace": args.iceberg_namespace,
-            "table": args.iceberg_table,
+            "table": {
+                "name": args.iceberg_table,
+                "location": f"abfs://{args.azure_container_output_name}@{storage_account_name}.dfs.core.windows.net/{args.azure_container_output_dir}/{args.iceberg_namespace}/{args.iceberg_table}"
+            }
         },
         "spark": {
             "k8s": {
@@ -238,7 +237,7 @@ def run(*args, **kwargs):
     spark = create_spark_session(cfg['spark'])
 
     # Ingest files into Iceberg table
-    ingest_to_iceberg(spark, cfg['azure'], files_to_process, args.file_type, args.xml_row_tag)
+    ingest_to_iceberg(cfg['iceberg'], spark, files_to_process, args.file_type, args.xml_row_tag)
 
 
 if __name__ == "__main__":

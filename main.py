@@ -132,6 +132,16 @@ def get_new_files(spark, iceberg_table, pre_snapshot, post_snapshot):
 def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=None):
     iceberg_table  = f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']['name']}"
 
+    # Inspect the columns in the snapshots table
+    def inspect_snapshots_table(spark, iceberg_table):
+        snapshots_df = spark.read.format("iceberg").load(f"{iceberg_table}.snapshots")
+        snapshots_df.show(truncate=False)
+        print(snapshots_df.columns)  # Print available columns
+
+    # Example usage:
+    inspect_snapshots_table(spark, "my_catalog.my_namespace.my_table")
+
+
     # Get the snapshot before the write
     pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 

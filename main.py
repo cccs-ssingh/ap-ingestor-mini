@@ -111,7 +111,7 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
     # df.writeTo(f"hogwarts_u.test.kaspersky_json") \
     df.writeTo(f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']}") \
         .option("merge-schema", "true") \
-        .tableProperty("location", {ice_cfg['table']['location']}) \
+        .tableProperty("location", ice_cfg['table']['location']) \
         .createOrReplace()
 
     # .tableProperty("location", "abfs://warehouse@apdatalakeudatafeeds.dfs.core.windows.net/iceberg/test/kaspersky_json") \

@@ -45,8 +45,9 @@ def create_spark_session(spark_cfg):
             .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
 
     spark = spark_builder.getOrCreate()
-    # # Set log level to ERROR to minimize logging
-    # spark.sparkContext.setLogLevel("ERROR")
+
+    # Set the Spark log level to ERROR
+    spark.sparkContext.setLogLevel("ERROR")
 
     logging.info('- spark session created')
 
@@ -150,9 +151,6 @@ def get_new_files(spark, iceberg_table, pre_snapshot, post_snapshot):
 def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=None):
     iceberg_table  = f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']['name']}"
 
-    # Example usage:
-    inspect_snapshots_table(spark, iceberg_table)
-
     # Get the snapshot before the write
     pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
@@ -185,14 +183,11 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
     # Get the number of records written
     record_count = df.count()
 
-    # Format the total size to a human-readable format
-    formatted_size = format_size(total_size)
-
     # Log metrics
     logging.info('Success!')
     logging.info(f'- {record_count} records')
     logging.info(f'- {len(new_files)} file(s)')
-    logging.info(f'- {formatted_size}')
+    logging.info(f'- {format_size(total_size)}')
     logging.info(f'- {time_taken:.2f} seconds')
 
 # Azure Connection string from env var

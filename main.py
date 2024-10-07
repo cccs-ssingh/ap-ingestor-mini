@@ -1,7 +1,6 @@
-
 from config import *
-from az import *
-from spark import *
+from utilities.az import *
+from utilities.spark import *
 
 # Main function
 def run(*args, **kwargs):

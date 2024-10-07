@@ -1,7 +1,7 @@
 import os
 import argparse
 
-from az import *
+from utilities.az import *
 
 def parse_cmd_line_args(args, kwargs):
     arg_parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")

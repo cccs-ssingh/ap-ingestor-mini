@@ -139,7 +139,7 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
         print(snapshots_df.columns)  # Print available columns
 
     # Example usage:
-    inspect_snapshots_table(spark, "my_catalog.my_namespace.my_table")
+    inspect_snapshots_table(spark, iceberg_table)
 
 
     # Get the snapshot before the write

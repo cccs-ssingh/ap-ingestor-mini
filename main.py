@@ -9,7 +9,7 @@ def run(*args, **kwargs):
     args = parse_cmd_line_args(args, kwargs)
     cfg = create_cfg_dict(args)
 
-    # List the files from the Azure directory (data container)
+    # Determine files tp process from Azure
     files_to_process = determine_input_file_list(cfg['azure'], args.file_type)
     if not files_to_process:
         logging.error("No files found in the specified directory.")

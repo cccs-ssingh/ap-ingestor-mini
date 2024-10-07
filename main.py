@@ -107,11 +107,29 @@ def format_size(bytes_size):
             return f"{bytes_size:.2f} {unit}"
         bytes_size /= 1024
 
+# Function to inspect the snapshots table
+def inspect_snapshots_table(spark, iceberg_table):
+    # Load the snapshots table
+    snapshots_df = spark.read.format("iceberg").load(f"{iceberg_table}.snapshots")
+
+    # Show all columns and data for debugging
+    snapshots_df.show(truncate=False)
+
+    # Print the available columns in the snapshots table
+    print("Available columns in snapshots table:", snapshots_df.columns)
+
+
 # Retrieve the latest snapshot for an Iceberg table
 def get_latest_snapshot(spark, iceberg_table):
+    # Query the snapshots table
     snapshots_df = spark.read.format("iceberg").load(f"{iceberg_table}.snapshots")
+
+    # Assuming 'snapshot_id' exists, retrieve the latest snapshot based on 'committed_at'
     latest_snapshot = snapshots_df.orderBy(snapshots_df["committed_at"].desc()).first()
-    return latest_snapshot["added_snapshot_id"] if latest_snapshot else None
+
+    # Return the 'snapshot_id' column
+    return latest_snapshot["snapshot_id"] if latest_snapshot else None
+
 
 # Retrieve the new files between two snapshots
 def get_new_files(spark, iceberg_table, pre_snapshot, post_snapshot):
@@ -132,15 +150,8 @@ def get_new_files(spark, iceberg_table, pre_snapshot, post_snapshot):
 def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=None):
     iceberg_table  = f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']['name']}"
 
-    # Inspect the columns in the snapshots table
-    def inspect_snapshots_table(spark, iceberg_table):
-        snapshots_df = spark.read.format("iceberg").load(f"{iceberg_table}.snapshots")
-        snapshots_df.show(truncate=False)
-        print(snapshots_df.columns)  # Print available columns
-
     # Example usage:
     inspect_snapshots_table(spark, iceberg_table)
-
 
     # Get the snapshot before the write
     pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
@@ -181,6 +192,7 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
     logging.info('Success!')
     logging.info(f'- {record_count} records')
     logging.info(f'- {len(new_files)} file(s)')
+    logging.info(f'- {formatted_size}')
     logging.info(f'- {time_taken:.2f} seconds')
 
 # Azure Connection string from env var

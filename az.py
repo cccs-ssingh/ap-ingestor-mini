@@ -2,9 +2,9 @@ import logging
 from azure.storage.blob import BlobServiceClient
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 az_logger = logging.getLogger("azure")
 az_logger.setLevel(logging.WARNING)
+
 
 def parse_connection_string(conn_str):
     """
@@ -33,3 +33,16 @@ def list_blobs_in_directory(azure_cfg):
     logging.info(f"- {len(blob_urls)} blobs total")
 
     return blob_urls
+
+def filter_urls_by_file_type(blob_urls, file_type):
+    # Filter expected file type
+    blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type)]
+    logging.info(f'- {len(blob_urls)} blobs of type: {file_type}')
+    for blob_url in blob_urls:
+        logging.info(f' - {blob_url}')
+    return blob_urls
+
+def determine_input_file_list(azure_cfg, file_type):
+    azure_blob_urls = list_blobs_in_directory(azure_cfg)
+    azure_blob_urls_filtered = filter_urls_by_file_type(azure_blob_urls, file_type)
+    return azure_blob_urls_filtered

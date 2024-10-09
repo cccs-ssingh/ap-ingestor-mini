@@ -46,6 +46,7 @@ def create_spark_session(spark_cfg):
 
 # Function to read data based on the file type
 def read_data(spark, input_files, file_type, xml_row_tag=None):
+    logging.info(f"- reading data type: {file_type}")
     if file_type == "csv":
         df = spark.read.option("header", "true").csv(input_files)
     elif file_type == "parquet":
@@ -67,6 +68,7 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
 
+    logging.info(f" - done")
     return df
 
 # Function to ingest raw data into an Iceberg table dynamically

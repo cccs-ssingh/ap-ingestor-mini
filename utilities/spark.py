@@ -76,13 +76,13 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
     # # Get the snapshot before the write
     # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
-    # Read the data based on the file type
-    df = read_data(spark, files_to_process, file_type, xml_row_tag)
-
     # Write the dataframe
     logging.info(f"Ingesting data:")
     logging.info(f"- Azure url: {ice_cfg['table']['location']}")
     logging.info(f"- Iceberg Table: {iceberg_table }")
+
+    # Read the data based on the file type
+    df = read_data(spark, files_to_process, file_type, xml_row_tag)
 
     # Start timing
     start_time = time.time()

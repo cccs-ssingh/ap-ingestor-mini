@@ -73,8 +73,8 @@ def read_data(spark, input_files, file_type, xml_row_tag=None):
 def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=None):
     iceberg_table  = f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']['name']}"
 
-    # Get the snapshot before the write
-    pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+    # # Get the snapshot before the write
+    # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # Read the data based on the file type
     df = read_data(spark, files_to_process, file_type, xml_row_tag)
@@ -96,18 +96,18 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
     # Calculate time taken
     time_taken = time.time() - start_time
 
-    # Get the snapshot after the write
-    post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
-
-    # Get the new files written during the current operation
-    new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
-
-    # Get the number of records written
-    record_count = df.count()
-
-    # Log metrics
-    logging.info('Success!')
-    logging.info(f'- {record_count} records')
-    logging.info(f'- {len(new_files)} file(s)')
-    logging.info(f'- {format_size(total_size)}')
-    logging.info(f'- {time_taken:.2f} seconds')
+    # # Get the snapshot after the write
+    # post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+    #
+    # # Get the new files written during the current operation
+    # new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
+    #
+    # # Get the number of records written
+    # record_count = df.count()
+    #
+    # # Log metrics
+    # logging.info('Success!')
+    # logging.info(f'- {record_count} records')
+    # logging.info(f'- {len(new_files)} file(s)')
+    # logging.info(f'- {format_size(total_size)}')
+    # logging.info(f'- {time_taken:.2f} seconds')

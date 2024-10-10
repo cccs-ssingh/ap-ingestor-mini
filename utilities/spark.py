@@ -46,20 +46,20 @@ def create_spark_session(spark_cfg):
 
 # Function to read data based on the file type
 def read_data(spark, file_cfg, input_files):
-    logging.info(f"- reading data type: {file_cfg['file']['type']}")
+    logging.info(f"- reading data type: {file_cfg['type']}")
 
-    if file_cfg['file']['type'] == "csv":
+    if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
-    elif file_cfg['file']['type'] == "parquet":
+    elif file_cfg['type'] == "parquet":
         df = spark.read.parquet(input_files)
-    elif file_cfg['file']['type'] == "json":
+    elif file_cfg['type'] == "json":
         if file_cfg['file']['json_multiline']:
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
             df = spark.read.json(input_files)
-    elif file_cfg['file']['type'] == "avro":
+    elif file_cfg['type'] == "avro":
         df = spark.read.format("avro").load(input_files)
-    elif file_cfg['file']['type'] == "xml":
+    elif file_cfg['type'] == "xml":
         # databricks library
         if not file_cfg['file']["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")

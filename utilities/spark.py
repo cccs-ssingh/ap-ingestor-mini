@@ -87,7 +87,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"- Iceberg Table: {iceberg_table}")
 
     # Read the data based on the file type
-    df = read_data(spark, files_to_process, cfg_file)
+    df = read_data(spark, cfg_file, files_to_process)
 
     # Start timing
     start_time = time.time()

@@ -53,7 +53,7 @@ def read_data(spark, file_cfg, input_files):
     elif file_cfg['type'] == "parquet":
         df = spark.read.parquet(input_files)
     elif file_cfg['type'] == "json":
-        if file_cfg['file']['json_multiline']:
+        if file_cfg['json_multiline']:
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
             df = spark.read.json(input_files)
@@ -61,11 +61,11 @@ def read_data(spark, file_cfg, input_files):
         df = spark.read.format("avro").load(input_files)
     elif file_cfg['type'] == "xml":
         # databricks library
-        if not file_cfg['file']["xml_row_tag"]:
+        if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
         df = (
             spark.read.format("xml")
-            .option("rowTag", file_cfg['file']["xml_row_tag"])
+            .option("rowTag", file_cfg["xml_row_tag"])
             .load(input_files)
         )
     else:

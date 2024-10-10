@@ -64,6 +64,8 @@ def read_data(spark, file_cfg, input_files):
         # databricks library
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
+
+        logging.info(f"xml_row_tag: {file_cfg['xml_row_tag']}")
         df = (
             spark.read.format("xml")
             .option("rowTag", file_cfg["xml_row_tag"])

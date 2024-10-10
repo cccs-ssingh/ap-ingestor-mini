@@ -22,6 +22,7 @@ def parse_cmd_line_args(args, kwargs):
     # File Specific details
     arg_parser.add_argument('--file_type', required=True, help="[csv, json, xml, avro]")
     arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format ")
+    arg_parser.add_argument('--json_multiline', action='store_true', help="if json is multiline separated")
 
     # Spark
     #   Driver
@@ -54,6 +55,11 @@ def create_cfg_dict(args):
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     return {
+        "file": {
+            "type": args.file_type,
+            "json_multiline": args.json_multiline,
+            "xml_row_tag": args.xml_row_tag,
+        },
         "azure": {
             "storage_account": {
                 "name": storage_account_name,

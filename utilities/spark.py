@@ -45,46 +45,49 @@ def create_spark_session(spark_cfg):
     return spark
 
 # Function to read data based on the file type
-def read_data(spark, input_files, file_type, xml_row_tag=None):
-    logging.info(f"- reading data type: {file_type}")
-    if file_type == "csv":
+def read_data(spark, cfg_file, input_files):
+    logging.info(f"- reading data type: {cfg_file['type']}")
+
+    if cfg_file['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
-    elif file_type == "parquet":
+    elif cfg_file['type'] == "parquet":
         df = spark.read.parquet(input_files)
-    elif file_type == "json":
-        # df = spark.read.json(input_files)
-        df = spark.read.option("multiLine", "true").json(input_files)
-    elif file_type == "avro":
+    elif cfg_file['type'] == "json":
+        if cfg_file['json_multiline']:
+            df = spark.read.option("multiLine", "true").json(input_files)
+        else:
+            df = spark.read.json(input_files)
+    elif cfg_file['type'] == "avro":
         df = spark.read.format("avro").load(input_files)
-    elif file_type == "xml":
+    elif cfg_file['type'] == "xml":
         # databricks library
-        if not xml_row_tag:
+        if not cfg_file["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
         df = (
             spark.read.format("xml")
-            .option("rowTag", xml_row_tag)
+            .option("rowTag", cfg_file["xml_row_tag"])
             .load(input_files)
         )
     else:
-        raise ValueError(f"Unsupported file type: {file_type}")
+        raise ValueError(f"Unsupported file type: {cfg_file['type']}")
 
     logging.info(f" - done")
     return df
 
 # Function to ingest raw data into an Iceberg table dynamically
-def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=None):
-    iceberg_table  = f"{ice_cfg['catalog']}.{ice_cfg['namespace']}.{ice_cfg['table']['name']}"
+def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
+    iceberg_table  = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
-    # # Get the snapshot before the write
-    # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+    # Get the snapshot before the write
+    pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # Write the dataframe
     logging.info(f"Ingesting data:")
-    logging.info(f"- Azure url: {ice_cfg['table']['location']}")
+    logging.info(f"- Azure url: {cfg_iceberg['table']['location']}")
     logging.info(f"- Iceberg Table: {iceberg_table }")
 
     # Read the data based on the file type
-    df = read_data(spark, files_to_process, file_type, xml_row_tag)
+    df = read_data(spark, files_to_process, cfg_file)
 
     # Start timing
     start_time = time.time()
@@ -92,24 +95,24 @@ def ingest_to_iceberg(ice_cfg, spark, files_to_process, file_type, xml_row_tag=N
     # Write the DataFrame to the Iceberg table
     df.writeTo(iceberg_table ) \
         .option("merge-schema", "true") \
-        .tableProperty("location", ice_cfg['table']['location']) \
+        .tableProperty("location", cfg_iceberg['table']['location']) \
         .createOrReplace()
 
     # Calculate time taken
     time_taken = time.time() - start_time
 
-    # # Get the snapshot after the write
-    # post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
-    #
-    # # Get the new files written during the current operation
-    # new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
-    #
-    # # Get the number of records written
-    # record_count = df.count()
-    #
-    # # Log metrics
-    # logging.info('Success!')
-    # logging.info(f'- {record_count} records')
-    # logging.info(f'- {len(new_files)} file(s)')
-    # logging.info(f'- {format_size(total_size)}')
-    # logging.info(f'- {time_taken:.2f} seconds')
+    # Get the snapshot after the write
+    post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+
+    # Get the new files written during the current operation
+    new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
+
+    # Get the number of records written
+    record_count = df.count()
+
+    # Log metrics
+    logging.info('Success!')
+    logging.info(f'- {record_count} records')
+    logging.info(f'- {len(new_files)} file(s)')
+    logging.info(f'- {format_size(total_size)}')
+    logging.info(f'- {time_taken:.2f} seconds')

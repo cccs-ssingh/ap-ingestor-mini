@@ -20,7 +20,7 @@ def run(*args, **kwargs):
     spark = create_spark_session(cfg['spark'])
 
     # Ingest files into Iceberg table
-    ingest_to_iceberg(cfg['iceberg'], spark, files_to_process, args.file_type, args.xml_row_tag)
+    ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, files_to_process, args.xml_row_tag)
 
 
 if __name__ == "__main__":

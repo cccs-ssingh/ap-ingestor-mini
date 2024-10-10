@@ -45,31 +45,31 @@ def create_spark_session(spark_cfg):
     return spark
 
 # Function to read data based on the file type
-def read_data(spark, cfg_file, input_files):
-    logging.info(f"- reading data type: {cfg_file['type']}")
+def read_data(spark, file_cfg, input_files):
+    logging.info(f"- reading data type: {file_cfg['file']['type']}")
 
-    if cfg_file['type'] == "csv":
+    if file_cfg['file']['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
-    elif cfg_file['type'] == "parquet":
+    elif file_cfg['file']['type'] == "parquet":
         df = spark.read.parquet(input_files)
-    elif cfg_file['type'] == "json":
-        if cfg_file['json_multiline']:
+    elif file_cfg['file']['type'] == "json":
+        if file_cfg['file']['json_multiline']:
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
             df = spark.read.json(input_files)
-    elif cfg_file['type'] == "avro":
+    elif file_cfg['file']['type'] == "avro":
         df = spark.read.format("avro").load(input_files)
-    elif cfg_file['type'] == "xml":
+    elif file_cfg['file']['type'] == "xml":
         # databricks library
-        if not cfg_file["xml_row_tag"]:
+        if not file_cfg['file']["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
         df = (
             spark.read.format("xml")
-            .option("rowTag", cfg_file["xml_row_tag"])
+            .option("rowTag", file_cfg['file']["xml_row_tag"])
             .load(input_files)
         )
     else:
-        raise ValueError(f"Unsupported file type: {cfg_file['type']}")
+        raise ValueError(f"Unsupported file type: {file_cfg['type']}")
 
     logging.info(f" - done")
     return df
@@ -82,9 +82,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # Write the dataframe
-    logging.info(f"Ingesting data:")
+    logging.info(f"Ingesting data into:")
     logging.info(f"- Azure url: {cfg_iceberg['table']['location']}")
-    logging.info(f"- Iceberg Table: {iceberg_table }")
+    logging.info(f"- Iceberg Table: {iceberg_table}")
 
     # Read the data based on the file type
     df = read_data(spark, files_to_process, cfg_file)

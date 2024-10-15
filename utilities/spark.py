@@ -1,5 +1,5 @@
 import logging
-import time
+import time, os
 
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
@@ -18,6 +18,9 @@ def format_size(bytes_size):
 
 # Function to create Spark session with Iceberg
 def create_spark_session(spark_cfg):
+    logging.info("Creating Spark session")
+    logging.info(f"CWD: {os.getcwd()}")
+
     # Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion with Azure Storage") \
@@ -26,8 +29,8 @@ def create_spark_session(spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config(    "spark.driver.extraJavaOptions", "-Dlog4j.configuration=file:/log4j.properties") \
-        .config(  "spark.executor.extraJavaOptions", "-Dlog4j.configuration=file:/log4j.properties")
+        .config(    "spark.driver.extraJavaOptions", "-Dlog4j.configuration=file:./log4j.properties") \
+        .config(  "spark.executor.extraJavaOptions", "-Dlog4j.configuration=file:./log4j.properties")
 
     # if spark_cfg['k8s']['name_space']:
     #     logging.info("- configuring spark for Kubernetes mode.")
@@ -37,7 +40,6 @@ def create_spark_session(spark_cfg):
     #         .config("spark.kubernetes.namespace", spark_cfg['k8s']['name_space']) \
     #         .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
 
-    logging.info("Creating Spark session")
     spark = spark_builder.getOrCreate()
     logging.info('- spark session created')
 

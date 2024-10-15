@@ -28,6 +28,7 @@ def parse_cmd_line_args(args, kwargs):
 
     # Spark
     #   Driver
+    arg_parser.add_argument('--spark_driver_memory', default="4g", help="Memory allocated to each Spark driver")
     arg_parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
     arg_parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
     arg_parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
@@ -97,6 +98,7 @@ def create_cfg_dict(args):
             },
             "driver": {
                 "spark.sql.files.maxPartitionBytes": args.spark_sql_files_maxPartitionBytes,
+                "spark.driver.memory": args.spark_driver_memory,
                 "spark.executor.memory": args.spark_executor_memory,
                 "spark.executor.cores": args.spark_executor_cores,
                 "spark.executor.instances": args.spark_executor_instances,

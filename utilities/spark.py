@@ -28,6 +28,7 @@ def create_spark_session(spark_cfg):
         .config(             "spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
         .config(            "spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
+        .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
         .config(    "spark.driver.extraJavaOptions", f"-Dlog4j.configuration=file:{log4j_prop_fp}") \

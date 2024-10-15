@@ -16,10 +16,8 @@ def format_size(bytes_size):
             return f"{bytes_size:.2f} {unit}"
         bytes_size /= 1024
 
-# Function to create Spark session with Iceberg and XML support
+# Function to create Spark session with Iceberg
 def create_spark_session(spark_cfg):
-    logging.info("Creating Spark session")
-
     # Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("Iceberg Ingestion with Azure Storage") \
@@ -28,15 +26,18 @@ def create_spark_session(spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
+        .config(    "spark.driver.extraJavaOptions", "-Dlog4j.configuration=log4j.properties") \
+        .config(  "spark.executor.extraJavaOptions", "-Dlog4j.configuration=log4j.properties")
 
-    if spark_cfg['k8s']['name_space']:
-        logging.info("- configuring spark for Kubernetes mode.")
-        spark_builder = spark_builder \
-            .config("spark.master", "k8s://https://kubernetes.default.svc") \
-            .config("spark.kubernetes.container.image", spark_cfg['k8s']['spark_image']) \
-            .config("spark.kubernetes.namespace", spark_cfg['k8s']['name_space']) \
-            .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
+    # if spark_cfg['k8s']['name_space']:
+    #     logging.info("- configuring spark for Kubernetes mode.")
+    #     spark_builder = spark_builder \
+    #         .config("spark.master", "k8s://https://kubernetes.default.svc") \
+    #         .config("spark.kubernetes.container.image", spark_cfg['k8s']['spark_image']) \
+    #         .config("spark.kubernetes.namespace", spark_cfg['k8s']['name_space']) \
+    #         .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
 
+    logging.info("Creating Spark session")
     spark = spark_builder.getOrCreate()
     logging.info('- spark session created')
 

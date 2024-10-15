@@ -18,6 +18,7 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--iceberg_catalog', required=True, help="Target Iceberg catalog name")
     arg_parser.add_argument('--iceberg_namespace', required=True, help="Target Iceberg namespace name")
     arg_parser.add_argument('--iceberg_table', required=True, help="Target Iceberg table name")
+    arg_parser.add_argument('--iceberg_timeperiod', required=True, help="Partition by timeperiod")
 
     # File Specific details
     arg_parser.add_argument('--file_type', required=True, help="[csv, json, xml, avro]")
@@ -63,7 +64,6 @@ def create_cfg_dict(args):
         "azure": {
             "storage_account": {
                 "name": storage_account_name,
-                # "key": storage_account_key,
                 "conn_str": conn_str,
             },
             "container": {
@@ -78,6 +78,7 @@ def create_cfg_dict(args):
             }
         },
         "iceberg": {
+            "timeperiod_loaded_by": args.iceberg_timeperiod,
             "catalog": args.iceberg_catalog,
             "namespace": args.iceberg_namespace,
             "table": {

@@ -69,7 +69,7 @@ def read_data(spark, file_cfg, input_files):
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
-        logging.info(f"xml_row_tag: {file_cfg['xml_row_tag']}")
+        logging.info(f"- xml_row_tag: {file_cfg['xml_row_tag']}")
         df = (
             spark.read.format("xml")
             .option("rowTag", file_cfg["xml_row_tag"])
@@ -96,6 +96,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Read the data based on the file type
     df = read_data(spark, cfg_file, files_to_process)
+
+    # partition by timeperiod
+    df = df.withColumn("timeperiod_loaded_by", cfg_iceberg['timeperiod_loaded_by'])
 
     # Start timing
     start_time = time.time()

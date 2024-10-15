@@ -4,7 +4,7 @@ import time
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
-from pyspark.sql.functions import lit
+from pyspark.sql.functions import lit, to_date
 
 
 def format_size(bytes_size):
@@ -102,7 +102,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Add the 'timeperiod_loaded_by' column if it's not in the DataFrame
     if "timeperiod_loaded_by" not in df.columns:
         # Add the column with a constant value from the config (ensure this value exists)
-        df = df.withColumn("timeperiod_loaded_by", lit(cfg_iceberg['timeperiod_loaded_by']))
+        df = df.withColumn("timeperiod_loaded_by", to_date(lit(cfg_iceberg['timeperiod_loaded_by'])))
 
     # # Start timing
     # start_time = time.time()

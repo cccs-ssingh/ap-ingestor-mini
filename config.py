@@ -18,7 +18,8 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--iceberg_catalog', required=True, help="Target Iceberg catalog name")
     arg_parser.add_argument('--iceberg_namespace', required=True, help="Target Iceberg namespace name")
     arg_parser.add_argument('--iceberg_table', required=True, help="Target Iceberg table name")
-    arg_parser.add_argument('--iceberg_timeperiod', required=True, help="Partition by timeperiod")
+    arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", required=True, help="Partition by timeperiod")
+    arg_parser.add_argument('--iceberg_partition_value', required=True, help="Partition by timeperiod")
 
     # File Specific details
     arg_parser.add_argument('--file_type', required=True, help="[csv, json, xml, avro]")
@@ -78,12 +79,15 @@ def create_cfg_dict(args):
             }
         },
         "iceberg": {
-            "timeperiod_loaded_by": args.iceberg_timeperiod,
             "catalog": args.iceberg_catalog,
             "namespace": args.iceberg_namespace,
             "table": {
                 "name": args.iceberg_table,
                 "location": f"abfs://{args.azure_container_output_name}@{storage_account_name}.dfs.core.windows.net/{args.azure_container_output_dir}/{args.iceberg_namespace}/{args.iceberg_table}"
+            },
+            "partition": {
+                "field": args.iceberg_partition_field,
+                "value": args.iceberg_partition_value,
             }
         },
         "spark": {

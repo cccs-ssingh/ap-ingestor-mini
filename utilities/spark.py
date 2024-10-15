@@ -99,10 +99,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Read the data based on the file type
     df = read_data(spark, cfg_file, files_to_process)
 
-    # Add the 'timeperiod_loaded_by' column if it's not in the DataFrame
-    if "timeperiod_loaded_by" not in df.columns:
-        # Add the column with a constant value from the config (ensure this value exists)
-        df = df.withColumn("timeperiod_loaded_by", to_date(lit(cfg_iceberg['timeperiod_loaded_by'])))
+    # Add the column with a constant value from the config (ensure this value exists)
+    df = df.withColumn(cfg_iceberg['partition']['field'], to_date(lit(cfg_iceberg['partition']['value'])))
 
     # # Start timing
     # start_time = time.time()

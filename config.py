@@ -18,7 +18,7 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--iceberg_catalog', required=True, help="Target Iceberg catalog name")
     arg_parser.add_argument('--iceberg_namespace', required=True, help="Target Iceberg namespace name")
     arg_parser.add_argument('--iceberg_table', required=True, help="Target Iceberg table name")
-    arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", required=True, help="Partition by timeperiod")
+    arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", help="Partition by timeperiod")
     arg_parser.add_argument('--iceberg_partition_value', required=True, help="Partition by timeperiod")
 
     # File Specific details

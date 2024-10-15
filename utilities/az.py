@@ -30,6 +30,7 @@ def list_blobs_in_directory(azure_cfg):
     for blob in blobs:
         blob_url = f"abfs://{azure_cfg['container']['input']['name']}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         blob_urls.append(blob_url)
+        logging.info(blob_urls)
     logging.info(f"- {len(blob_urls)} blobs total")
 
     return blob_urls

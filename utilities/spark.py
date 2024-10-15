@@ -4,6 +4,7 @@ import time
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
+from pyspark.sql.functions import lit
 
 
 def format_size(bytes_size):
@@ -87,16 +88,6 @@ def read_data(spark, file_cfg, input_files):
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
-    # Check if the Iceberg table exists
-    try:
-        # Attempt to load the table
-        spark.read.format("iceberg").load(iceberg_table)
-        table_exists = True
-        logging.info(f"Table '{iceberg_table}' exists. Appending")
-    except AnalysisException:
-        table_exists = False
-        logging.info(f"Table '{iceberg_table}' does not exist, creating a new one.")
-
     # # Get the snapshot before the write
     # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
@@ -108,36 +99,19 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Read the data based on the file type
     df = read_data(spark, cfg_file, files_to_process)
 
-    # Add dynamic partition column (if any) to DataFrame
-    partition_columns = ["timeperiod_loaded_by"]
-    for col in partition_columns:
-        df = df.withColumn(col, df[col])  # Assuming partition column already exists in data
+    # Add the 'timeperiod_loaded_by' column if it's not in the DataFrame
+    if "timeperiod_loaded_by" not in df.columns:
+        # Add the column with a constant value from the config (ensure this value exists)
+        df = df.withColumn("timeperiod_loaded_by", lit(cfg_iceberg['timeperiod_loaded_by']))
 
     # # Start timing
     # start_time = time.time()
 
-    # # Write the DataFrame to the Iceberg table
-    # df.writeTo(iceberg_table ) \
-    #     .option("merge-schema", "true") \
-    #     .tableProperty("location", cfg_iceberg['table']['location']) \
-    #     .createOrReplace()
-
     # Write the DataFrame to the Iceberg table
-    writer = df.writeTo(iceberg_table ) \
+    df.writeTo(iceberg_table ) \
         .option("merge-schema", "true") \
-        .tableProperty("location", cfg_iceberg['table']['location'])
-
-    if not table_exists:
-        # Create a new table with partitioning
-        print(f"Creating new table '{iceberg_table}' with partitioning: {partition_columns}")
-        writer.partitionedBy(*[f"years({col})" for col in partition_columns]) \
-            .create()  # Create the table with partition columns
-    else:
-        # Table already exists, replace or append data
-        print(f"Table '{iceberg_table}' exists, appending data.")
-        writer.createOrReplace()
-
-    print(f"Data ingested into '{iceberg_table}'.")
+        .tableProperty("location", cfg_iceberg['table']['location']) \
+        .createOrReplace()
 
     # # Calculate time taken
     # time_taken = time.time() - start_time

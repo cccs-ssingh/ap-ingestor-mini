@@ -26,8 +26,8 @@ def create_spark_session(spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config(    "spark.driver.extraJavaOptions", "-Dlog4j.configuration=log4j.properties") \
-        .config(  "spark.executor.extraJavaOptions", "-Dlog4j.configuration=log4j.properties")
+        .config(    "spark.driver.extraJavaOptions", "-Dlog4j.configuration=file:/log4j.properties") \
+        .config(  "spark.executor.extraJavaOptions", "-Dlog4j.configuration=file:/log4j.properties")
 
     # if spark_cfg['k8s']['name_space']:
     #     logging.info("- configuring spark for Kubernetes mode.")

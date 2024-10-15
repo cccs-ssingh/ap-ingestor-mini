@@ -30,7 +30,6 @@ def list_blobs_in_directory(azure_cfg):
     for blob in blobs:
         blob_url = f"abfs://{azure_cfg['container']['input']['name']}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         blob_urls.append(blob_url)
-        logging.info(blob_urls)
     logging.info(f"- {len(blob_urls)} blobs total")
 
     return blob_urls
@@ -42,7 +41,7 @@ def filter_urls_by_file_type(blob_urls, file_type):
 
     # Print files to process if needed
     for blob_url in blob_urls:
-        logging.debug(f' - {blob_url}')
+        logging.info(f' - {blob_url}')
 
     return blob_urls
 

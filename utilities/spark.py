@@ -99,6 +99,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"Ingesting data into:")
     logging.info(f"- Azure url: {cfg_iceberg['table']['location']}")
     logging.info(f"- Iceberg Table: {iceberg_table}")
+    logging.info(f"- {len(files_to_process)} files to process")
 
     # Read the data based on the file type
     df = read_data(spark, cfg_file, files_to_process)

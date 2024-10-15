@@ -50,16 +50,20 @@ def read_data(spark, file_cfg, input_files):
 
     if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
+
     elif file_cfg['type'] == "parquet":
         df = spark.read.parquet(input_files)
+
+    elif file_cfg['type'] == "avro":
+        df = spark.read.format("avro").load(input_files)
+
     elif file_cfg['type'] == "json":
         if file_cfg['json_multiline']:
-            logging.info(f"json_multiline: {file_cfg['json_multiline']}")
+            logging.info(f"- json_multiline: {file_cfg['json_multiline']}")
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
             df = spark.read.json(input_files)
-    elif file_cfg['type'] == "avro":
-        df = spark.read.format("avro").load(input_files)
+
     elif file_cfg['type'] == "xml":
         # databricks library
         if not file_cfg["xml_row_tag"]:
@@ -71,6 +75,7 @@ def read_data(spark, file_cfg, input_files):
             .option("rowTag", file_cfg["xml_row_tag"])
             .load(input_files)
         )
+
     else:
         raise ValueError(f"Unsupported file type: {file_cfg['type']}")
 

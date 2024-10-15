@@ -62,6 +62,8 @@ def read_data(spark, file_cfg, input_files):
         df = spark.read.parquet(input_files)
 
     elif file_cfg['type'] == "avro":
+        spark.conf.set("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY")
+        spark.conf.set(               "spark.sql.avro.parseMode", "PERMISSIVE")
         df = spark.read.format("avro").load(input_files)
 
     elif file_cfg['type'] == "json":

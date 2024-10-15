@@ -3,6 +3,7 @@ import time
 
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
+from pyspark.sql.utils import AnalysisException
 
 
 def format_size(bytes_size):
@@ -84,12 +85,22 @@ def read_data(spark, file_cfg, input_files):
 
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
-    iceberg_table  = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
+    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
-    # Get the snapshot before the write
-    pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+    # Check if the Iceberg table exists
+    try:
+        # Attempt to load the table
+        spark.read.format("iceberg").load(iceberg_table)
+        table_exists = True
+        logging.info(f"Table '{iceberg_table}' exists. Appending")
+    except AnalysisException:
+        table_exists = False
+        logging.info(f"Table '{iceberg_table}' does not exist, creating a new one.")
 
-    # Write the dataframe
+    # # Get the snapshot before the write
+    # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+
+    # # Write the dataframe
     logging.info(f"Ingesting data into:")
     logging.info(f"- Azure url: {cfg_iceberg['table']['location']}")
     logging.info(f"- Iceberg Table: {iceberg_table}")
@@ -97,33 +108,52 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Read the data based on the file type
     df = read_data(spark, cfg_file, files_to_process)
 
-    # partition by timeperiod
-    df = df.withColumn("timeperiod_loaded_by", cfg_iceberg['timeperiod_loaded_by'])
+    # Add dynamic partition column (if any) to DataFrame
+    partition_columns = ["timeperiod_loaded_by"]
+    for col in partition_columns:
+        df = df.withColumn(col, df[col])  # Assuming partition column already exists in data
 
-    # Start timing
-    start_time = time.time()
+    # # Start timing
+    # start_time = time.time()
+
+    # # Write the DataFrame to the Iceberg table
+    # df.writeTo(iceberg_table ) \
+    #     .option("merge-schema", "true") \
+    #     .tableProperty("location", cfg_iceberg['table']['location']) \
+    #     .createOrReplace()
 
     # Write the DataFrame to the Iceberg table
-    df.writeTo(iceberg_table ) \
+    writer = df.writeTo(iceberg_table ) \
         .option("merge-schema", "true") \
-        .tableProperty("location", cfg_iceberg['table']['location']) \
-        .createOrReplace()
+        .tableProperty("location", cfg_iceberg['table']['location'])
 
-    # Calculate time taken
-    time_taken = time.time() - start_time
+    if not table_exists:
+        # Create a new table with partitioning
+        print(f"Creating new table '{iceberg_table}' with partitioning: {partition_columns}")
+        writer.partitionedBy(*[f"years({col})" for col in partition_columns]) \
+            .create()  # Create the table with partition columns
+    else:
+        # Table already exists, replace or append data
+        print(f"Table '{iceberg_table}' exists, appending data.")
+        writer.createOrReplace()
 
-    # Get the snapshot after the write
-    post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+    print(f"Data ingested into '{iceberg_table}'.")
 
-    # Get the new files written during the current operation
-    new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
-
-    # Get the number of records written
-    record_count = df.count()
-
-    # Log metrics
-    logging.info('Success!')
-    logging.info(f'- {record_count} records')
-    logging.info(f'- {len(new_files)} file(s)')
-    logging.info(f'- {format_size(total_size)}')
-    logging.info(f'- {time_taken:.2f} seconds')
+    # # Calculate time taken
+    # time_taken = time.time() - start_time
+    #
+    # # Get the snapshot after the write
+    # post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+    #
+    # # Get the new files written during the current operation
+    # new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
+    #
+    # # Get the number of records written
+    # record_count = df.count()
+    #
+    # # Log metrics
+    # logging.info('Success!')
+    # logging.info(f'- {record_count} records')
+    # logging.info(f'- {len(new_files)} file(s)')
+    # logging.info(f'- {format_size(total_size)}')
+    # logging.info(f'- {time_taken:.2f} seconds')

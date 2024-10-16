@@ -114,12 +114,17 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # start_time = time.time()
 
     # Write the DataFrame to the Iceberg table
+    logging.info(f"Partitioning by field: {cfg_iceberg['partition']['field']}")
+    if cfg_iceberg['partition']['field'] in df.columns:
+        logging.info(f"Partition field '{cfg_iceberg['partition']['field']}' exists in the DataFrame.")
+    else:
+        raise ValueError(f"Partition field '{cfg_iceberg['partition']['field']}' does not exist in the DataFrame.")
+
     df.writeTo(iceberg_table ) \
         .option("merge-schema", "true") \
         .tableProperty("location", cfg_iceberg['table']['location']) \
+        .partitionedBy(cfg_iceberg['partition']['field']) \
         .createOrReplace()
-
-    # .partitionedBy(cfg_iceberg['partition']['field']) \
 
     # # Calculate time taken
     # time_taken = time.time() - start_time

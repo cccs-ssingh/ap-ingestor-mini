@@ -19,8 +19,8 @@ def format_size(bytes_size):
 # Function to create Spark session with Iceberg
 def create_spark_session(spark_cfg):
     logging.info("Creating Spark session")
-    log4j_prop_fp = f"{os.getcwd()}/ap-ingestor-mini/utilities/log4j.properties"
-    logging.info(f"log4j prop file: {log4j_prop_fp}")
+    # log4j_prop_fp = f"{os.getcwd()}/ap-ingestor-mini/utilities/log4j.properties"
+    # logging.info(f"log4j prop file: {log4j_prop_fp}")
 
     # Spark session configuration
     spark_builder = SparkSession.builder \
@@ -30,9 +30,9 @@ def create_spark_session(spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
-        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config(    "spark.driver.extraJavaOptions", f"-Dlog4j.configuration=file:{log4j_prop_fp}") \
-        .config(  "spark.executor.extraJavaOptions", f"-Dlog4j.configuration=file:{log4j_prop_fp}") \
+        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0")
+        # .config(    "spark.driver.extraJavaOptions", f"-Dlog4j.configuration=file:{log4j_prop_fp}") \
+        # .config(  "spark.executor.extraJavaOptions", f"-Dlog4j.configuration=file:{log4j_prop_fp}") \
 
     # if spark_cfg['k8s']['name_space']:
     #     logging.info("- configuring spark for Kubernetes mode.")
@@ -117,7 +117,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df.writeTo(iceberg_table ) \
         .option("merge-schema", "true") \
         .tableProperty("location", cfg_iceberg['table']['location']) \
-        .partitionedBy(f"identity({cfg_iceberg['partition']['field']})") \
+        .partitionedBy(cfg_iceberg['partition']['field']) \
         .createOrReplace()
 
     # # Calculate time taken

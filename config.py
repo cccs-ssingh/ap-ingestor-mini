@@ -16,7 +16,7 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--azure_container_output_dir', default="iceberg", help="Warehouse directory for Iceberg tables")
 
     # Iceberg
-    arg_parser.add_argument('--iceberg_catalog', required=True, help="Target Iceberg catalog name")
+    arg_parser.add_argument('--iceberg_catalog', default='hogwarts_u', help="Target Iceberg catalog name")
     arg_parser.add_argument('--iceberg_namespace', required=True, help="Target Iceberg namespace name")
     arg_parser.add_argument('--iceberg_table', required=True, help="Target Iceberg table name")
     arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", help="Column to partition with")

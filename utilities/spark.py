@@ -122,7 +122,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         .option("merge-schema", "true") \
         .tableProperty("location", cfg_iceberg['table']['location']) \
         .partitionedBy(cfg_iceberg['partition']['field']) \
-        .createOrReplace()
+        .append()
+        # .createOrReplace()
 
     # # Calculate time taken
     # time_taken = time.time() - start_time

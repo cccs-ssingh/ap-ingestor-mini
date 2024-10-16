@@ -60,7 +60,6 @@ def create_cfg_dict(args):
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     return {
-        # "timeperiod_to_process": args.timeperiod_to_process,
         "file": {
             "type": args.file_type,
             "json_multiline": args.json_multiline,
@@ -91,8 +90,8 @@ def create_cfg_dict(args):
             },
             "partition": {
                 "field": args.iceberg_partition_field,
-                "value": args.iceberg_partition_value,
                 "format": args.iceberg_partition_format,
+                "value": args.timeperiod_to_process,
             }
         },
         "spark": {

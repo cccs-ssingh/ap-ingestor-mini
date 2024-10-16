@@ -114,8 +114,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"- partitioning by: {cfg_iceberg['partition']['field']}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
-        to_date(lit(cfg_iceberg['partition']['value']),
-        cfg_iceberg['partition']['format']))
+        to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
+    )
 
     # Write the table
     df.writeTo(iceberg_table) \

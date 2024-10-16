@@ -19,17 +19,17 @@ def parse_connection_string(conn_str):
     return account_name, account_key
 
 # Function to list blobs in a directory from Azure Blob Storage using connection string
-def list_blobs_in_directory(azure_cfg):
-    blob_service_client = BlobServiceClient.from_connection_string(azure_cfg['storage_account']['conn_str'])
-    container_client = blob_service_client.get_container_client(azure_cfg['container']['input']['name'])
+def list_blobs_in_directory(conn_str, container_name, container_dir):
+    blob_service_client = BlobServiceClient.from_connection_string(conn_str)
+    container_client = blob_service_client.get_container_client(container_name)
 
     logging.info(f"Connected to: {container_client.url}")
-    logging.info(f"- retrieving blobs from container '{azure_cfg['container']['input']['name']}' in directory '{azure_cfg['container']['input']['dir']}'")
-    blobs = container_client.list_blobs(name_starts_with=azure_cfg['container']['input']['dir'])
+    logging.info(f"- retrieving blobs from container '{container_name}' in directory '{container_dir}'")
+    blobs = container_client.list_blobs(name_starts_with=container_dir)
 
     blob_urls = []
     for blob in blobs:
-        blob_url = f"abfss://{azure_cfg['container']['input']['name']}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
+        blob_url = f"abfss://{container_name}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         # logging.info(blob_url)
         blob_urls.append(blob_url)
     logging.info(f"- {len(blob_urls)} blobs total")
@@ -39,7 +39,7 @@ def list_blobs_in_directory(azure_cfg):
 def filter_urls_by_file_type(blob_urls, file_type):
     # Filter expected file type
     blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type)]
-    logging.info(f'- {len(blob_urls)} blobs of type: {file_type}')
+    logging.info(f"- {len(blob_urls)} blobs of type: {file_type}")
 
     # # Print files to process if needed
     # for blob_url in blob_urls:
@@ -48,6 +48,10 @@ def filter_urls_by_file_type(blob_urls, file_type):
     return blob_urls
 
 def determine_files_to_process(azure_cfg, file_type):
-    azure_blob_urls = list_blobs_in_directory(azure_cfg)
+    azure_blob_urls = list_blobs_in_directory(
+        azure_cfg['storage_account']['conn_str'],
+        azure_cfg['container']['input']['name'],
+        azure_cfg['container']['input']['dir'],
+    )
     azure_blob_urls_filtered = filter_urls_by_file_type(azure_blob_urls, file_type)
     return azure_blob_urls_filtered

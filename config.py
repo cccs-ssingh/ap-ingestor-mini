@@ -8,6 +8,7 @@ def parse_cmd_line_args(args, kwargs):
 
     # Azure
     #   Input
+    arg_parser.add_argument('--timeperiod_to_process', required=True, help="ie. yyyy/mm/dd/hh")
     arg_parser.add_argument('--azure_container_input_name', default="data", help="Input data container name")
     arg_parser.add_argument('--azure_container_input_dir', required=True, help="Raw data directory in Azure Storage")
     #   Output
@@ -18,8 +19,9 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--iceberg_catalog', required=True, help="Target Iceberg catalog name")
     arg_parser.add_argument('--iceberg_namespace', required=True, help="Target Iceberg namespace name")
     arg_parser.add_argument('--iceberg_table', required=True, help="Target Iceberg table name")
-    arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", help="Partition by timeperiod")
-    arg_parser.add_argument('--iceberg_partition_value', required=True, help="Partition by timeperiod")
+    arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", help="Column to partition with")
+    arg_parser.add_argument('--iceberg_partition_value', required=True, help="value to partition by")
+    arg_parser.add_argument('--iceberg_partition_format', required=True, help="partitioning format yyyy/MM/dd")
 
     # File Specific details
     arg_parser.add_argument('--file_type', required=True, help="[csv, json, xml, avro]")
@@ -58,6 +60,7 @@ def create_cfg_dict(args):
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     return {
+        # "timeperiod_to_process": args.timeperiod_to_process,
         "file": {
             "type": args.file_type,
             "json_multiline": args.json_multiline,
@@ -71,7 +74,7 @@ def create_cfg_dict(args):
             "container": {
                 "input": {
                     "name": args.azure_container_input_name,
-                    "dir": args.azure_container_input_dir
+                    "dir": f"{args.azure_container_input_dir}/{args.timeperiod_to_process}",
                 },
                 "output": {
                     "name": args.azure_container_output_name,
@@ -89,6 +92,7 @@ def create_cfg_dict(args):
             "partition": {
                 "field": args.iceberg_partition_field,
                 "value": args.iceberg_partition_value,
+                "format": args.iceberg_partition_format,
             }
         },
         "spark": {

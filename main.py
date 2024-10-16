@@ -11,7 +11,7 @@ def run(*args, **kwargs):
     cfg = create_cfg_dict(args)
 
     # Determine files tp process from Azure
-    files_to_process = determine_files_to_process(cfg['azure'], args.file_type)
+    files_to_process = determine_files_to_process(cfg['azure'], cfg['file']['type'])
     if not files_to_process:
         logging.error("No files found in the specified directory.")
         return

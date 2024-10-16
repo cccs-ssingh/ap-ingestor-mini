@@ -20,7 +20,7 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--iceberg_namespace', required=True, help="Target Iceberg namespace name")
     arg_parser.add_argument('--iceberg_table', required=True, help="Target Iceberg table name")
     arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", help="Column to partition with")
-    arg_parser.add_argument('--iceberg_partition_value', required=True, help="value to partition by")
+    arg_parser.add_argument('--iceberg_partition_value', help="value to partition by: yyyy/mm/dd/hh etc")
     arg_parser.add_argument('--iceberg_partition_format', required=True, help="partitioning format yyyy/MM/dd")
 
     # File Specific details

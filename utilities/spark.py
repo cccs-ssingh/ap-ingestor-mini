@@ -108,17 +108,18 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
-    df = df.withColumn(cfg_iceberg['partition']['field'], to_date(lit(cfg_iceberg['partition']['value'])))
+    logging.info(f"- partitioning by: {cfg_iceberg['partition']['field']}")
+    df = df.withColumn(cfg_iceberg['partition']['field'], to_date(lit(cfg_iceberg['partition']['value']), "yyyy/MM/dd"))
 
     # # Start timing
     # start_time = time.time()
 
-    # Write the DataFrame to the Iceberg table
-    logging.info(f"Partitioning by field: {cfg_iceberg['partition']['field']}")
-    if cfg_iceberg['partition']['field'] in df.columns:
-        logging.info(f"Partition field '{cfg_iceberg['partition']['field']}' exists in the DataFrame.")
-    else:
-        raise ValueError(f"Partition field '{cfg_iceberg['partition']['field']}' does not exist in the DataFrame.")
+    # # Write the DataFrame to the Iceberg table
+    # logging.info(f"Partitioning by field: {cfg_iceberg['partition']['field']}")
+    # if cfg_iceberg['partition']['field'] in df.columns:
+    #     logging.info(f"Partition field '{cfg_iceberg['partition']['field']}' exists in the DataFrame.")
+    # else:
+    #     raise ValueError(f"Partition field '{cfg_iceberg['partition']['field']}' does not exist in the DataFrame.")
 
     df.writeTo(iceberg_table ) \
         .option("merge-schema", "true") \

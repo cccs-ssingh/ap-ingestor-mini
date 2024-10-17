@@ -19,9 +19,6 @@ def format_size(bytes_size):
 # Function to create Spark session with Iceberg
 def create_spark_session(spark_cfg):
     logging.info("Creating Spark session")
-    log4j_prop_fp = f"{os.getcwd()}/ap-ingestor-mini/utilities/log4j.properties"
-    logging.info(f"log4j prop file: {log4j_prop_fp}")
-    print(os.listdir(os.getcwd()))
 
     # Spark session configuration
     spark_builder = SparkSession.builder \
@@ -31,9 +28,7 @@ def create_spark_session(spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
-        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config("spark.driver.extraJavaOptions", f"-Dlog4j.configuration=file:{log4j_prop_fp}") \
-        .config("spark.executor.extraJavaOptions", f"-Dlog4j.configuration=file:{log4j_prop_fp}")
+        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0")
 
     spark = spark_builder.getOrCreate()
     logging.info('- spark session created')
@@ -96,8 +91,8 @@ def read_data(spark, file_cfg, input_files):
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
-    # # Get the snapshot before the write
-    # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+    # Get the snapshot before the write
+    pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # # Write the dataframe
     logging.info(f"Ingesting data into:")
@@ -126,21 +121,21 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         .append()
         # .createOrReplace()
 
-    # # Calculate time taken
-    # time_taken = time.time() - start_time
-    #
-    # # Get the snapshot after the write
-    # post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
-    #
-    # # Get the new files written during the current operation
-    # new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
-    #
-    # # Get the number of records written
-    # record_count = df.count()
-    #
-    # # Log metrics
-    # logging.info('Success!')
-    # logging.info(f'- {record_count} records')
-    # logging.info(f'- {len(new_files)} file(s)')
-    # logging.info(f'- {format_size(total_size)}')
-    # logging.info(f'- {time_taken:.2f} seconds')
+    # Calculate time taken
+    time_taken = time.time() - start_time
+
+    # Get the snapshot after the write
+    post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
+
+    # Get the new files written during the current operation
+    new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
+
+    # Get the number of records written
+    record_count = df.count()
+
+    # Log metrics
+    logging.info('Success!')
+    logging.info(f'- {record_count} records')
+    logging.info(f'- {len(new_files)} file(s)')
+    logging.info(f'- {format_size(total_size)}')
+    logging.info(f'- {time_taken:.2f} seconds')

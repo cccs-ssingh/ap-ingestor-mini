@@ -119,7 +119,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         .tableProperty("location", cfg_iceberg['table']['location']) \
         .partitionedBy(cfg_iceberg['partition']['field']) \
         .append()
-        # .createOrReplace()
 
     # Calculate time taken
     time_taken = time.time() - start_time
@@ -134,8 +133,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     record_count = df.count()
 
     # Log metrics
-    logging.info('Success!')
-    logging.info(f'- {record_count} records')
-    logging.info(f'- {len(new_files)} file(s)')
-    logging.info(f'- {format_size(total_size)}')
-    logging.info(f'- {time_taken:.2f} seconds')
+    logging.info('')
+    logging.info('Success! Metrics:')
+    logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')

@@ -16,8 +16,13 @@ def run(*args, **kwargs):
         logging.error("No files found in the specified directory.")
         return
 
+    # Get the root directory where the DAG is located
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    # Construct the path to the log4j.properties file
+    log4j_prop_fp = os.path.join(project_root, 'log4j.properties')
+
     # Create Spark session
-    spark = create_spark_session(cfg['spark'])
+    spark = create_spark_session(cfg['spark'], log4j_prop_fp)
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, files_to_process)

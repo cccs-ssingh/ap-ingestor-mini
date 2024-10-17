@@ -64,7 +64,7 @@ def read_data(spark, file_cfg, input_files):
 
     elif file_cfg['type'] == "json":
         if file_cfg['json_multiline']:
-            logging.info(f"- json_multiline: {file_cfg['json_multiline']}")
+            logging.info(f" - json_multiline: {file_cfg['json_multiline']}")
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
             df = spark.read.json(input_files)
@@ -74,7 +74,7 @@ def read_data(spark, file_cfg, input_files):
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
-        logging.info(f"- xml_row_tag: {file_cfg['xml_row_tag']}")
+        logging.info(f" - xml_row_tag: {file_cfg['xml_row_tag']}")
         df = (
             spark.read.format("xml")
             .option("rowTag", file_cfg["xml_row_tag"])

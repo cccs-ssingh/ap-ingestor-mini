@@ -19,7 +19,8 @@ def format_size(bytes_size):
 # Function to create Spark session with Iceberg
 def create_spark_session(spark_cfg):
     logging.info("Creating Spark session")
-    log4j_prop_fp = f"{os.getcwd()}/ap-ingestor-mini/utilities/log4j.properties"
+    # log4j_prop_fp = f"{os.getcwd()}/ap-ingestor-mini/utilities/log4j.properties"
+    log4j_prop_fp = f"/utilities/log4j.properties"
     logging.info(f"log4j prop file: {log4j_prop_fp}")
     print(os.listdir(os.getcwd()))
 

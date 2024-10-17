@@ -6,6 +6,12 @@ from utilities.spark import *
 def run(*args, **kwargs):
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
+    # Get the current file path
+    current_file_path = os.path.abspath(__file__)
+
+    # Log the current file path
+    logging.info(f"Running script file path: {current_file_path}")
+
     # Organized cmd line args dictionary
     args = parse_cmd_line_args(args, kwargs)
     cfg = create_cfg_dict(args)

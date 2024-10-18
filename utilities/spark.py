@@ -95,25 +95,24 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # # Write the dataframe
-    logging.info(f"Ingesting data into:")
-    logging.info(f"- Azure url: {cfg_iceberg['table']['location']}")
-    logging.info(f"- Iceberg Table: {iceberg_table}")
-    logging.info(f"- {len(files_to_process)} files to process")
+    logging.info(f"Ingesting data to: {cfg_iceberg['table']['location']}")
 
     # Start timing
     start_time = time.time()
 
     # Read the data based on the file type
+    logging.info(f"- {len(files_to_process)} files to process")
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
-    logging.info(f"- partitioning by: {cfg_iceberg['partition']['field']}")
+    logging.info(f"- populating column:: {cfg_iceberg['partition']['field']}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
         to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
 
     # Write the table
+    logging.info(f"- writing to Iceberg Table: {iceberg_table}")
     df.writeTo(iceberg_table) \
         .option("merge-schema", "true") \
         .tableProperty("location", cfg_iceberg['table']['location']) \

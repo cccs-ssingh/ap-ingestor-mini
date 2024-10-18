@@ -6,8 +6,6 @@ from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.functions import lit, to_date
 
-from org.apache.iceberg.catalog import TableIdentifier
-
 
 def format_size(bytes_size):
     """
@@ -132,12 +130,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     )
     logging.info(" - populated!")
 
-    # Write the table
-    # Define the table identifier (for Iceberg tables)
-    table_identifier = TableIdentifier.of(cfg_iceberg['table']['location'], iceberg_table)
-
     # Check if the table exists
-    if not spark.catalog.tableExists(table_identifier):
+    if not spark.catalog.tableExists(iceberg_table):
         # Create the table if it doesn't exist
         logging.info(f"- writing to new Iceberg Table: {iceberg_table}")
         df.writeTo(iceberg_table) \

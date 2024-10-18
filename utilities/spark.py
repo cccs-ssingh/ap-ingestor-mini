@@ -6,6 +6,8 @@ from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.functions import lit, to_date
 
+from org.apache.iceberg.catalog import TableIdentifier
+
 
 def format_size(bytes_size):
     """
@@ -18,6 +20,7 @@ def format_size(bytes_size):
 
 # Function to create Spark session with Iceberg
 def create_spark_session(spark_cfg):
+    logging.info(f"")
     logging.info("Creating Spark session")
 
     # Spark session configuration
@@ -32,6 +35,7 @@ def create_spark_session(spark_cfg):
 
     spark = spark_builder.getOrCreate()
     logging.info('- spark session created!')
+    log_spark_config(spark)
 
     # # Print spark config
     # for key, value in spark.sparkContext.getConf().getAll():
@@ -46,6 +50,21 @@ def create_spark_session(spark_cfg):
     #         .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
 
     return spark
+
+def log_spark_config(spark):
+    # Access the Spark configuration
+    conf = spark.sparkContext.getConf()
+
+    # Extract and log relevant configuration settings
+    logging.info("==== Spark Session Configuration ====")
+    logging.info(f"          App Name: {conf.get('spark.app.name')}")
+    logging.info(f"            Master: {conf.get('spark.master')}")
+    logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
+    logging.info(f"   Executor Memory: {conf.get('spark.executor.memory', 'Not Set')}")
+    logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")
+    logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
+    logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
+    logging.info("=====================================")
 
 # Function to read data based on the file type
 def read_data(spark, file_cfg, input_files):
@@ -89,6 +108,7 @@ def read_data(spark, file_cfg, input_files):
 
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
+    logging.info("")
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
     # # Get the snapshot before the write
@@ -105,19 +125,34 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
-    logging.info(f"- populating column:: {cfg_iceberg['partition']['field']}")
+    logging.info(f"- populating column: {cfg_iceberg['partition']['field']} with value: {to_date(cfg_iceberg['partition']['value'])}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
         to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
+    logging.info(" - populated!")
 
     # Write the table
-    logging.info(f"- writing to Iceberg Table: {iceberg_table}")
-    df.writeTo(iceberg_table) \
-        .option("merge-schema", "true") \
-        .tableProperty("location", cfg_iceberg['table']['location']) \
-        .partitionedBy(cfg_iceberg['partition']['field']) \
-        .append()
+    # Define the table identifier (for Iceberg tables)
+    table_identifier = TableIdentifier.of(cfg_iceberg['table']['location'], iceberg_table)
+
+    # Check if the table exists
+    if not spark.catalog.tableExists(table_identifier):
+        # Create the table if it doesn't exist
+        logging.info(f"- writing to new Iceberg Table: {iceberg_table}")
+        df.writeTo(iceberg_table) \
+            .option("merge-schema", "true") \
+            .tableProperty("location", cfg_iceberg['table']['location']) \
+            .partitionedBy(cfg_iceberg['partition']['field']) \
+            .create()
+    else:
+        # Append to the table if it exists
+        logging.info(f"- appending to existing Iceberg Table: {iceberg_table}")
+        df.writeTo(iceberg_table) \
+            .option("merge-schema", "true") \
+            .tableProperty("location", cfg_iceberg['table']['location']) \
+            .partitionedBy(cfg_iceberg['partition']['field']) \
+            .append()
     #
     # # Calculate time taken
     # time_taken = time.time() - start_time

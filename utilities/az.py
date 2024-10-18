@@ -23,6 +23,7 @@ def list_blobs_in_directory(conn_str, container_name, container_dir):
     blob_service_client = BlobServiceClient.from_connection_string(conn_str)
     container_client = blob_service_client.get_container_client(container_name)
 
+    logging.info(f"")
     logging.info(f"Connected to: {container_client.url}")
     logging.info(f"- retrieving blobs from container '{container_name}' in directory '{container_dir}'")
     blobs = container_client.list_blobs(name_starts_with=container_dir)

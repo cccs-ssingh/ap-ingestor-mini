@@ -56,13 +56,13 @@ def log_spark_config(spark):
     # Extract and log relevant configuration settings
     logging.info(f"")
     logging.info("==== Spark Session Configuration ====")
-    logging.info(f"          App Name: {conf.get('spark.app.name')}")
+    # logging.info(f"          App Name: {conf.get('spark.app.name')}")
     # logging.info(f"            Master: {conf.get('spark.master')}")
     logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
     logging.info(f"   Executor Memory: {conf.get('spark.executor.memory', 'Not Set')}")
     logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")
     logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
-    # logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
+    logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
     logging.info("=====================================")
 
 # Function to read data based on the file type

@@ -29,10 +29,14 @@ def create_spark_session(spark_cfg):
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
-        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0")
+        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
+        .config("spark.default.parallelism", 96) \
+        .config("spark.executor.heartbeatInterval", "60s") \
+        .config("spark.dynamicAllocation.enabled", "true") \
+        .config("spark.sql.shuffle.partitions", "512") \
+        .config("spark.sql.adaptive.enabled", "true") \
 
     spark = spark_builder.getOrCreate()
-    logging.info('- spark session created!')
     log_spark_config(spark)
 
     # # Print spark config

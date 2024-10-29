@@ -132,12 +132,11 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
-    logging.info(f"- populating column: {cfg_iceberg['partition']['field']} with value: {(cfg_iceberg['partition']['value'])}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
         to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
-    logging.info(" - populated!")
+    logging.info(f"- populated column: {cfg_iceberg['partition']['field']} with value: {cfg_iceberg['partition']['value']}")
 
     # Check if the table exists
     if not spark.catalog.tableExists(iceberg_table):

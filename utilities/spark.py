@@ -30,18 +30,16 @@ def create_spark_session(spark_cfg):
         .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config("spark.default.parallelism", 96) \
-        .config("spark.executor.heartbeatInterval", "60s") \
-        .config("spark.dynamicAllocation.enabled", "true") \
-        .config("spark.sql.shuffle.partitions", "512") \
-        .config("spark.sql.adaptive.enabled", "true") \
+        .config("spark.sql.avro.datetimeRebaseModeInRead", "com.databricks:spark-xml_2.12:0.18.0") \
+        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
+        # .config("spark.default.parallelism", 96) \
+        # .config("spark.executor.heartbeatInterval", "60s") \
+        # .config("spark.dynamicAllocation.enabled", "true") \
+        # .config("spark.sql.shuffle.partitions", "512") \
+        # .config("spark.sql.adaptive.enabled", "true") \
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)
-
-    # # Print spark config
-    # for key, value in spark.sparkContext.getConf().getAll():
-    #     logging.warning(f"{key}: {value}")
 
     # if spark_cfg['k8s']['name_space']:
     #     logging.info("- configuring spark for Kubernetes mode.")
@@ -54,6 +52,10 @@ def create_spark_session(spark_cfg):
     return spark
 
 def log_spark_config(spark):
+    # # Print spark config
+    # for key, value in spark.sparkContext.getConf().getAll():
+    #     logging.warning(f"{key}: {value}")
+
     # Access the Spark configuration
     conf = spark.sparkContext.getConf()
 

@@ -31,6 +31,7 @@ def create_spark_session(spark_cfg):
         .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
+        .config("spark.sql.adaptive.enabled", "true") \
         # .config("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY") \
         # .config(       "spark.sql.avro.parseMode", "PERMISSIVE") \
         # .config("spark.default.parallelism", 96) \
@@ -64,7 +65,7 @@ def log_spark_config(spark):
     logging.info(f"")
     logging.info("==== Spark Session Configuration ====")
     logging.info(f"          App Name: {conf.get('spark.app.name')}")
-    # logging.info(f"            Master: {conf.get('spark.master')}")
+    logging.info(f"            Master: {conf.get('spark.master')}")
     logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
     logging.info(f"   Executor Memory: {conf.get('spark.executor.memory', 'Not Set')}")
     logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")

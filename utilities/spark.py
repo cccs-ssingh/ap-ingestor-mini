@@ -90,7 +90,7 @@ def read_data(spark, file_cfg, input_files):
 
     elif file_cfg['type'] == "json":
         if file_cfg['json_multiline']:
-            logging.info(f" - json_multiline: {file_cfg['json_multiline']}")
+            logging.info(f"   - json_multiline: {file_cfg['json_multiline']}")
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
             df = spark.read.json(input_files)

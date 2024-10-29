@@ -17,13 +17,13 @@ def format_size(bytes_size):
         bytes_size /= 1024
 
 # Function to create Spark session with Iceberg
-def create_spark_session(spark_cfg):
+def create_spark_session(spark_cfg, app_name):
     logging.info(f"")
     logging.info("Creating Spark session")
 
     # Spark session configuration
     spark_builder = SparkSession.builder \
-        .appName("APA4b Ingestor-Mini") \
+        .appName(f"APA4b Ingestor-Mini: {app_name}") \
         .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
         .config(             "spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
         .config(            "spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \

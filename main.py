@@ -11,7 +11,7 @@ def run(*args, **kwargs):
     cfg = create_cfg_dict(args)
 
     # Create Spark session
-    spark = create_spark_session(cfg['spark'])
+    spark = create_spark_session(cfg['spark'], cfg['iceberg']['table']['name'])
 
     # Determine files tp process from Azure
     files_to_process = determine_files_to_process(cfg['azure'], cfg['file']['type'])

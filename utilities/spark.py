@@ -132,7 +132,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
-    logging.info(f"- populating column: {cfg_iceberg['partition']['field']} with value: {to_date(cfg_iceberg['partition']['value'])}")
+    logging.info(f"- populating column: {cfg_iceberg['partition']['field']} with value: {(cfg_iceberg['partition']['value'])}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
         to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])

@@ -62,7 +62,7 @@ def log_spark_config(spark):
     # Extract and log relevant configuration settings
     logging.info(f"")
     logging.info("==== Spark Session Configuration ====")
-    # logging.info(f"          App Name: {conf.get('spark.app.name')}")
+    logging.info(f"          App Name: {conf.get('spark.app.name')}")
     # logging.info(f"            Master: {conf.get('spark.master')}")
     logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
     logging.info(f"   Executor Memory: {conf.get('spark.executor.memory', 'Not Set')}")

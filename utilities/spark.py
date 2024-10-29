@@ -24,14 +24,15 @@ def create_spark_session(spark_cfg):
     # Spark session configuration
     spark_builder = SparkSession.builder \
         .appName("APA4b Ingestor-Mini") \
+        .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
         .config(             "spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
         .config(            "spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
         .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
         .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config("spark.sql.avro.datetimeRebaseModeInRead", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
+        # .config("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY") \
+        # .config(       "spark.sql.avro.parseMode", "PERMISSIVE") \
         # .config("spark.default.parallelism", 96) \
         # .config("spark.executor.heartbeatInterval", "60s") \
         # .config("spark.dynamicAllocation.enabled", "true") \

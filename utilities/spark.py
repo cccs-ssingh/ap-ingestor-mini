@@ -25,11 +25,14 @@ def create_spark_session(spark_cfg, app_name):
 
     # Spark session configuration
     if spark_cfg.get('config'):
-        spark_builder = SparkSession.builder \
+        spark = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
             .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077")
         for key, value in json.loads(spark_cfg.get('config')).items():
-            spark = spark_builder.config(key, value)
+            spark = spark.config(key, value)
+
+        spark = spark.getOrCreate()
+        log_spark_config(spark)
     else:
         spark_builder = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
@@ -51,7 +54,7 @@ def create_spark_session(spark_cfg, app_name):
             # .config("spark.sql.adaptive.enabled", "true") \
 
         spark = spark_builder.getOrCreate()
-    log_spark_config(spark)
+        log_spark_config(spark)
 
     # if spark_cfg['k8s']['name_space']:
     #     logging.info("- configuring spark for Kubernetes mode.")

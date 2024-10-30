@@ -31,9 +31,9 @@ def list_blobs_in_directory(conn_str, container_name, container_dir):
     blob_urls = []
     for blob in blobs:
         blob_url = f"abfss://{container_name}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
-        # logging.info(blob_url)
+        logging.debug(blob_url)
         blob_urls.append(blob_url)
-    logging.info(f"- {len(blob_urls)} blobs total")
+    logging.debug(f"- {len(blob_urls)} blobs total")
 
     return blob_urls
 

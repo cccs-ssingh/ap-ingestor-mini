@@ -22,24 +22,31 @@ def create_spark_session(spark_cfg, app_name):
     logging.info("Creating Spark session")
 
     # Spark session configuration
-    spark_builder = SparkSession.builder \
-        .appName(f"APA4b Ingestor-Mini: {app_name}") \
-        .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
-        .config(             "spark.executor.cores", spark_cfg['executor']["cores"]) \
-        .config(            "spark.executor.memory", spark_cfg['executor']["memory"]) \
-        .config(         "spark.executor.instances", spark_cfg['executor']["instances"]) \
-        .config(              "spark.driver.memory", spark_cfg['driver']["memory"]) \
-        .config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"]) \
-        .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"]) \
-    # .config("spark.sql.adaptive.enabled", "true") \
-        # .config("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY") \
-        # .config(       "spark.sql.avro.parseMode", "PERMISSIVE") \
-        # .config("spark.default.parallelism", 96) \
-        # .config("spark.executor.heartbeatInterval", "60s") \
-        # .config("spark.dynamicAllocation.enabled", "true") \
-        # .config("spark.sql.shuffle.partitions", "512") \
+    if spark_cfg.get('config'):
+        spark_builder = SparkSession.builder \
+            .appName(f"APA4b Ingestor-Mini: {app_name}") \
+            .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077")
+        for key, value in spark_cfg.get('config').items():
+            spark = spark_builder.config(key, value)
+    else:
+        spark_builder = SparkSession.builder \
+            .appName(f"APA4b Ingestor-Mini: {app_name}") \
+            .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
+            .config(             "spark.executor.cores", spark_cfg['executor']["cores"]) \
+            .config(            "spark.executor.memory", spark_cfg['executor']["memory"]) \
+            .config(         "spark.executor.instances", spark_cfg['executor']["instances"]) \
+            .config(              "spark.driver.memory", spark_cfg['driver']["memory"]) \
+            .config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"]) \
+            .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
+            .config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"]) \
         # .config("spark.sql.adaptive.enabled", "true") \
+            # .config("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY") \
+            # .config(       "spark.sql.avro.parseMode", "PERMISSIVE") \
+            # .config("spark.default.parallelism", 96) \
+            # .config("spark.executor.heartbeatInterval", "60s") \
+            # .config("spark.dynamicAllocation.enabled", "true") \
+            # .config("spark.sql.shuffle.partitions", "512") \
+            # .config("spark.sql.adaptive.enabled", "true") \
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)
@@ -76,7 +83,7 @@ def log_spark_config(spark):
 
 # Function to read data based on the file type
 def read_data(spark, file_cfg, input_files):
-    logging.info(f"- reading data type: {file_cfg['type']}")
+    logging.debug(f"- reading data type: {file_cfg['type']}")
 
     if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
@@ -129,19 +136,23 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     start_time = time.time()
 
     # Read the data based on the file type
-    logging.info(f"- {len(files_to_process)} files to process")
+    logging.debug(f"- {len(files_to_process)} files to process")
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
+    logging.info(f"")
+    logging.info(f"Populating column: {cfg_iceberg['partition']['field']} with value: {cfg_iceberg['partition']['value']}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
         to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
-    logging.info(f"- populated column: {cfg_iceberg['partition']['field']} with value: {cfg_iceberg['partition']['value']}")
+    logging.info(f"- populated!")
 
     # New table
+    logging.info(f"")
     if not spark.catalog.tableExists(iceberg_table):
-        logging.info(f"- writing to new Iceberg Table: {iceberg_table}")
+        logging.info(f"Table doesn't exist:")
+        logging.info(f"- creating a new Iceberg Table")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
@@ -149,7 +160,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             .create()
     # Existing Table
     else:
-        logging.info(f"- appending to existing Iceberg Table: {iceberg_table}")
+        logging.info(f"Table exists")
         log_schema_changes(spark, iceberg_table, df)
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
@@ -176,7 +187,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
 def log_schema_changes(spark, iceberg_table, df):
-    logging.info("Comparing existing table schema to dataframe:")
+    logging.info("- comparing existing table schema to dataframe:")
     table_schema = spark.table(iceberg_table).schema
     table_fields = {field.name: field.dataType for field in table_schema.fields}
 
@@ -199,5 +210,6 @@ def log_schema_changes(spark, iceberg_table, df):
         for name, (table_dtype, df_dtype) in changed_columns.items():
             logging.info(f"  - {name}: Table type = {table_dtype}, DataFrame type = {df_dtype}")
     else:
-        logging.info("- schemas match")
+        logging.info(" - schemas !match")
+        logging.info("")
 

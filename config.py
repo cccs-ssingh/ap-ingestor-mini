@@ -1,5 +1,6 @@
 import os
 import argparse
+import json
 
 from utilities.az import *
 
@@ -29,14 +30,14 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--json_multiline', action='store_true', help="if json is multiline separated")
 
     # Spark
-    #   Driver
+    arg_parser.add_argument('--spark_config', help="JSON string to represent spark config")
     arg_parser.add_argument('--spark_driver_memory', default="4g", help="Memory allocated to each Spark driver")
     arg_parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
     arg_parser.add_argument('--spark_executor_cores', default="4", type=int, help="Number of cores allocated to each Spark executor")
     arg_parser.add_argument('--spark_executor_instances', default="1", type=int, help="Number of Spark executor instances")
     arg_parser.add_argument('--spark_sql_files_maxPartitionBytes', default="128m", help="Max partition bytes for Spark SQL files")
 
-    #   Kubernetes mode
+    #  Kubernetes mode
     arg_parser.add_argument('--k8s_name_space', help="Kubernetes name space")
     arg_parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
 
@@ -95,6 +96,7 @@ def create_cfg_dict(args):
             }
         },
         "spark": {
+            "config": json.loads(args.spark_config),
             "k8s": {
                 "spark_image": args.k8s_spark_image,
                 "name_space": args.k8s_name_space,

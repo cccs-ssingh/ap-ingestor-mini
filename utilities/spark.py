@@ -20,17 +20,16 @@ def format_size(bytes_size):
 def create_spark_session(spark_cfg, app_name):
     logging.info(f"")
     logging.info("Creating Spark session")
-    spark_cores_max =
 
     # Spark session configuration
     spark_builder = SparkSession.builder \
         .appName(f"APA4b Ingestor-Mini: {app_name}") \
         .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
-        .config(             "spark.executor.cores", spark_cfg['driver']["spark.executor.cores"]) \
-        .config(            "spark.executor.memory", spark_cfg['driver']["spark.executor.memory"]) \
-        .config(         "spark.executor.instances", spark_cfg['driver']["spark.executor.instances"]) \
-        .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
-        .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
+        .config(             "spark.executor.cores", spark_cfg['executor']["cores"]) \
+        .config(            "spark.executor.memory", spark_cfg['executor']["memory"]) \
+        .config(         "spark.executor.instances", spark_cfg['executor']["instances"]) \
+        .config(              "spark.driver.memory", spark_cfg['driver']["memory"]) \
+        .config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
         .config("spark.cores.max", spark_cfg['driver']["spark.executor.cores"] * spark_cfg['driver']["spark.executor.instances"]) \
     # .config("spark.sql.adaptive.enabled", "true") \

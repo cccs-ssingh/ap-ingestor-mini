@@ -99,12 +99,12 @@ def create_cfg_dict(args):
                 "spark_image": args.k8s_spark_image,
                 "name_space": args.k8s_name_space,
             },
-            "driver": {
-                "spark.sql.files.maxPartitionBytes": args.spark_sql_files_maxPartitionBytes,
-                "spark.driver.memory": args.spark_driver_memory,
-                "spark.executor.memory": args.spark_executor_memory,
-                "spark.executor.cores": args.spark_executor_cores,
-                "spark.executor.instances": args.spark_executor_instances,
+            "sql": {"maxPartitionBytes": args.spark_sql_files_maxPartitionBytes},
+            "driver": {"memory": args.spark_driver_memory,},
+            "executor": {
+                "memory": args.spark_executor_memory,
+                "cores": args.spark_executor_cores,
+                "instances": args.spark_executor_instances,
             },
         }
     }

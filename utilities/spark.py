@@ -20,8 +20,8 @@ def format_size(bytes_size):
 
 # Function to create Spark session with Iceberg
 def create_spark_session(spark_cfg, app_name):
-    logging.info(f"")
-    logging.info("Creating Spark session")
+    logging.debug(f"")
+    logging.debug("Creating Spark session")
 
     # Spark session configuration
     if spark_cfg.get('config'):
@@ -67,17 +67,19 @@ def create_spark_session(spark_cfg, app_name):
 def log_spark_config(spark):
     # Access the Spark configuration
     conf = spark.sparkContext.getConf()
+    all_configs = spark.sparkContext.getConf().getAll()
 
     # Extract and log relevant configuration settings
-    logging.info(f"")
     logging.info("==== Spark Session Configuration ====")
-    logging.info(f"          App Name: {conf.get('spark.app.name')}")
-    logging.info(f"            Master: {conf.get('spark.master')}")
-    logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
-    logging.info(f"   Executor Memory: {conf.get('spark.executor.memory', 'Not Set')}")
-    logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")
-    logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
-    logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
+    for key, value in all_configs:
+        print(f"{key}: {value}")
+    # logging.info(f"          App Name: {conf.get('spark.app.name')}")
+    # logging.info(f"            Master: {conf.get('spark.master')}")
+    # logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
+    # logging.info(f"   Executor Memory: {conf.get('spark.executor.memory', 'Not Set')}")
+    # logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")
+    # logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
+    # logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
     logging.info("=====================================")
 
 # Read data based on the file type

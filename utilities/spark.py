@@ -22,10 +22,10 @@ def format_size(bytes_size):
 def create_spark_session(spark_cfg, app_name):
     logging.info(f"")
     logging.info("Creating Spark session")
-    cfg = json.loads(spark_cfg.get('config'))
 
     # Spark session configuration
     if spark_cfg.get('config'):
+        cfg = json.loads(spark_cfg.get('config'))
         spark = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
             .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
@@ -139,7 +139,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # # Write the dataframe
-    logging.info(f"Ingesting data to: {cfg_iceberg['table']['location']}")
+    logging.info(f"Reading data from: {cfg_iceberg['table']['location']}")
 
     # Start timing
     start_time = time.time()

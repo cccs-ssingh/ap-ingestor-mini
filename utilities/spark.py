@@ -31,7 +31,7 @@ def create_spark_session(spark_cfg, app_name):
         .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config("spark.sql.adaptive.enabled", "true") \
+        # .config("spark.sql.adaptive.enabled", "true") \
         # .config("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY") \
         # .config(       "spark.sql.avro.parseMode", "PERMISSIVE") \
         # .config("spark.default.parallelism", 96) \

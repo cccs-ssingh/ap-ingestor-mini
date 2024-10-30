@@ -20,6 +20,7 @@ def format_size(bytes_size):
 def create_spark_session(spark_cfg, app_name):
     logging.info(f"")
     logging.info("Creating Spark session")
+    spark_cores_max =
 
     # Spark session configuration
     spark_builder = SparkSession.builder \

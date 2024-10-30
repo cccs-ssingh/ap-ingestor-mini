@@ -32,8 +32,8 @@ def parse_cmd_line_args(args, kwargs):
     #   Driver
     arg_parser.add_argument('--spark_driver_memory', default="4g", help="Memory allocated to each Spark driver")
     arg_parser.add_argument('--spark_executor_memory', default="4g", help="Memory allocated to each Spark executor")
-    arg_parser.add_argument('--spark_executor_cores', default="4", help="Number of cores allocated to each Spark executor")
-    arg_parser.add_argument('--spark_executor_instances', default="1", help="Number of Spark executor instances")
+    arg_parser.add_argument('--spark_executor_cores', default="4", type=int, help="Number of cores allocated to each Spark executor")
+    arg_parser.add_argument('--spark_executor_instances', default="1", type=int, help="Number of Spark executor instances")
     arg_parser.add_argument('--spark_sql_files_maxPartitionBytes', default="128m", help="Max partition bytes for Spark SQL files")
 
     #   Kubernetes mode

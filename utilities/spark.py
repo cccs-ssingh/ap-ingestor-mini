@@ -139,10 +139,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     )
     logging.info(f"- populated column: {cfg_iceberg['partition']['field']} with value: {cfg_iceberg['partition']['value']}")
 
-    logging.info(f"")
-    logging.info(f"Schema of new data:")
-    df.printSchema()
-
     # New table
     if not spark.catalog.tableExists(iceberg_table):
         logging.info(f"- writing to new Iceberg Table: {iceberg_table}")
@@ -154,6 +150,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Existing Table
     else:
         logging.info(f"- appending to existing Iceberg Table: {iceberg_table}")
+        log_schema_changes(spark, iceberg_table, df)
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
@@ -177,3 +174,30 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('Success!')
     # logging.info('Success! Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
+
+def log_schema_changes(spark, iceberg_table, df):
+    logging.info("Comparing existing table schema to dataframe:")
+    table_schema = spark.table(iceberg_table).schema
+    table_fields = {field.name: field.dataType for field in table_schema.fields}
+
+    # Get the schema of the DataFrame you're writing
+    df_schema = df.schema
+    df_fields = {field.name: field.dataType for field in df_schema.fields}
+
+    # Find new or changed columns
+    new_columns = {name: dtype for name, dtype in df_fields.items() if name not in table_fields}
+    changed_columns = {name: (table_fields[name], dtype) for name, dtype in df_fields.items()
+                       if name in table_fields and table_fields[name] != dtype}
+
+    # Log schema differences if there are any
+    if new_columns or changed_columns:
+        logging.info("- new columns in DataFrame not in Iceberg table:")
+        for name, dtype in new_columns.items():
+            logging.info(f" - {name}: {dtype}")
+
+        logging.info("- changed columns in DataFrame compared to Iceberg table:")
+        for name, (table_dtype, df_dtype) in changed_columns.items():
+            logging.info(f"  - {name}: Table type = {table_dtype}, DataFrame type = {df_dtype}")
+    else:
+        logging.info("- schemas match")
+

@@ -25,19 +25,21 @@ def create_spark_session(spark_cfg, app_name):
 
     # Spark session configuration
     if spark_cfg.get('config'):
+        # Dynamic spark config
         cfg = json.loads(spark_cfg.get('config'))
         spark = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
             .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
             .config("spark.cores.max", int(cfg['spark.executor.cores']) * int(cfg['spark.executor.instances']))
 
-        # Dynamically set the config as passed in via args
         for key, value in cfg.items():
             spark = spark.config(key, value)
 
         spark = spark.getOrCreate()
         log_spark_config(spark)
+
     else:
+        # cmd-line specified config
         spark_builder = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
             .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
@@ -48,14 +50,6 @@ def create_spark_session(spark_cfg, app_name):
             .config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"]) \
             .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
             .config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"]) \
-        # .config("spark.sql.adaptive.enabled", "true") \
-            # .config("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY") \
-            # .config(       "spark.sql.avro.parseMode", "PERMISSIVE") \
-            # .config("spark.default.parallelism", 96) \
-            # .config("spark.executor.heartbeatInterval", "60s") \
-            # .config("spark.dynamicAllocation.enabled", "true") \
-            # .config("spark.sql.shuffle.partitions", "512") \
-            # .config("spark.sql.adaptive.enabled", "true") \
 
         spark = spark_builder.getOrCreate()
         log_spark_config(spark)
@@ -71,10 +65,6 @@ def create_spark_session(spark_cfg, app_name):
     return spark
 
 def log_spark_config(spark):
-    # # Print spark config
-    # for key, value in spark.sparkContext.getConf().getAll():
-    #     logging.warning(f"{key}: {value}")
-
     # Access the Spark configuration
     conf = spark.sparkContext.getConf()
 
@@ -90,7 +80,7 @@ def log_spark_config(spark):
     logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
     logging.info("=====================================")
 
-# Function to read data based on the file type
+# Read data based on the file type
 def read_data(spark, file_cfg, input_files):
     logging.debug(f"- reading data type: {file_cfg['type']}")
 
@@ -101,8 +91,8 @@ def read_data(spark, file_cfg, input_files):
         df = spark.read.parquet(input_files)
 
     elif file_cfg['type'] == "avro":
-        spark.conf.set("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY")
-        spark.conf.set(               "spark.sql.avro.parseMode", "PERMISSIVE")
+        # spark.conf.set("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY")
+        # spark.conf.set(               "spark.sql.avro.parseMode", "PERMISSIVE")
         df = spark.read.format("avro").load(input_files)
 
     elif file_cfg['type'] == "json":

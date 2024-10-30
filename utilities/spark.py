@@ -31,7 +31,7 @@ def create_spark_session(spark_cfg, app_name):
         .config(              "spark.driver.memory", spark_cfg['driver']["memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        .config("spark.cores.max", spark_cfg['driver']["spark.executor.cores"] * spark_cfg['driver']["spark.executor.instances"]) \
+        .config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"]) \
     # .config("spark.sql.adaptive.enabled", "true") \
         # .config("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY") \
         # .config(       "spark.sql.avro.parseMode", "PERMISSIVE") \
@@ -143,17 +143,16 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"Schema of new data:")
     df.printSchema()
 
-    # Check if the table exists
+    # New table
     if not spark.catalog.tableExists(iceberg_table):
-        # Create the table if it doesn't exist
         logging.info(f"- writing to new Iceberg Table: {iceberg_table}")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
             .partitionedBy(cfg_iceberg['partition']['field']) \
             .create()
+    # Existing Table
     else:
-        # Append to the table if it exists
         logging.info(f"- appending to existing Iceberg Table: {iceberg_table}")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \

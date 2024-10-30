@@ -31,7 +31,8 @@ def create_spark_session(spark_cfg, app_name):
         .config(              "spark.driver.memory", spark_cfg['driver']["spark.driver.memory"]) \
         .config("spark.sql.files.maxPartitionBytes", spark_cfg['driver']["spark.sql.files.maxPartitionBytes"]) \
         .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-        # .config("spark.sql.adaptive.enabled", "true") \
+        .config("spark.cores.max", spark_cfg['driver']["spark.executor.cores"] * spark_cfg['driver']["spark.executor.instances"]) \
+    # .config("spark.sql.adaptive.enabled", "true") \
         # .config("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY") \
         # .config(       "spark.sql.avro.parseMode", "PERMISSIVE") \
         # .config("spark.default.parallelism", 96) \
@@ -137,6 +138,10 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
     logging.info(f"- populated column: {cfg_iceberg['partition']['field']} with value: {cfg_iceberg['partition']['value']}")
+
+    logging.info(f"")
+    logging.info(f"Schema of new data:")
+    df.printSchema()
 
     # Check if the table exists
     if not spark.catalog.tableExists(iceberg_table):

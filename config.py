@@ -1,6 +1,5 @@
 import os
 import argparse
-import json
 
 from utilities.az import *
 
@@ -96,7 +95,7 @@ def create_cfg_dict(args):
             }
         },
         "spark": {
-            "config": json.loads(args.spark_config),
+            "config": args.spark_config,
             "k8s": {
                 "spark_image": args.k8s_spark_image,
                 "name_space": args.k8s_name_space,

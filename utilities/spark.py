@@ -1,5 +1,7 @@
 import logging
-import time, os
+import time
+import os
+import json
 
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
@@ -23,6 +25,7 @@ def create_spark_session(spark_cfg, app_name):
 
     # Spark session configuration
     if spark_cfg.get('config'):
+        spark_config_dict = json.loads(spark_cfg.get('config'))
         spark_builder = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
             .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077")
@@ -48,7 +51,7 @@ def create_spark_session(spark_cfg, app_name):
             # .config("spark.sql.shuffle.partitions", "512") \
             # .config("spark.sql.adaptive.enabled", "true") \
 
-    spark = spark_builder.getOrCreate()
+        spark = spark_builder.getOrCreate()
     log_spark_config(spark)
 
     # if spark_cfg['k8s']['name_space']:
@@ -210,6 +213,6 @@ def log_schema_changes(spark, iceberg_table, df):
         for name, (table_dtype, df_dtype) in changed_columns.items():
             logging.info(f"  - {name}: Table type = {table_dtype}, DataFrame type = {df_dtype}")
     else:
-        logging.info(" - schemas !match")
+        logging.info(" - schemas match!")
         logging.info("")
 

@@ -22,13 +22,17 @@ def format_size(bytes_size):
 def create_spark_session(spark_cfg, app_name):
     logging.info(f"")
     logging.info("Creating Spark session")
+    cfg_dict = json.loads(spark_cfg.get('config'))
 
     # Spark session configuration
     if spark_cfg.get('config'):
         spark = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
-            .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077")
-        for key, value in json.loads(spark_cfg.get('config')).items():
+            .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
+            .config("spark.cores.max", cfg_dict['spark.executor.cores'] * cfg_dict['spark.executor.instances'])
+
+        # Dynamically set the config as passed in via args
+        for key, value in cfg_dict.items():
             spark = spark.config(key, value)
 
         spark = spark.getOrCreate()

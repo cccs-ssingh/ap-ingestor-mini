@@ -25,11 +25,10 @@ def create_spark_session(spark_cfg, app_name):
 
     # Spark session configuration
     if spark_cfg.get('config'):
-        spark_config_dict = json.loads(spark_cfg.get('config'))
         spark_builder = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
             .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077")
-        for key, value in spark_cfg.get('config').items():
+        for key, value in json.loads(spark_cfg.get('config')).items():
             spark = spark_builder.config(key, value)
     else:
         spark_builder = SparkSession.builder \

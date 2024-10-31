@@ -167,14 +167,14 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     else:
         logging.info(f"- table exists!")
         log_schema_changes(spark, iceberg_table, df)
-        # if 'nvd' in iceberg_table:
-        #
+        if 'nvd' in iceberg_table:
 
-        # df.writeTo(iceberg_table) \
-        #     .option("merge-schema", "true") \
-        #     .tableProperty("location", cfg_iceberg['table']['location']) \
-        #     .partitionedBy(cfg_iceberg['partition']['field']) \
-        #     .append()
+        logging.info(f"appending to existing table")
+        df.writeTo(iceberg_table) \
+            .option("merge-schema", "true") \
+            .tableProperty("location", cfg_iceberg['table']['location']) \
+            .partitionedBy(cfg_iceberg['partition']['field']) \
+            .append()
     #
     # # Calculate time taken
     # time_taken = time.time() - start_time
@@ -210,9 +210,11 @@ def log_schema_changes(spark, iceberg_table, df):
         for name, data_type in new_columns.items():
             logging.info(f"  - {name}: {data_type}")
 
-    # Find differences in column data types
-    changed_columns = {name: (table_fields[name], dtype) for name, dtype in df_fields.items()
-                       if name in table_fields and table_fields[name] != dtype}
+    # Identify columns where the DataFrame's type differs from the table's type
+    changed_columns = {}
+    for name, dtype in df_fields.items():
+        if name in table_fields and table_fields[name] != dtype:
+            changed_columns[name] = (table_fields[name], dtype)
     if changed_columns:
         logging.info(" - columns with different datatypes in the DataFrame compared to Iceberg table:")
         for name, (table_data_type, df_data_type) in changed_columns.items():

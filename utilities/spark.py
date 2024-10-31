@@ -167,6 +167,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     else:
         logging.info(f"- table exists!")
         log_schema_changes(spark, iceberg_table, df)
+        # if 'nvd' in iceberg_table:
+        #
+
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
@@ -207,16 +210,17 @@ def log_schema_changes(spark, iceberg_table, df):
 
     # Log schema differences if there are any
     if new_columns or changed_columns:
-        logging.info("- new columns in DataFrame not in Iceberg table:")
+        logging.info(" - new columns in DataFrame not in Iceberg table:")
         for name, dtype in new_columns.items():
-            logging.info(f" - {name}: {dtype}")
+            logging.info(f"  - {name}: {dtype}")
 
-        logging.info("- changed columns in DataFrame compared to Iceberg table:")
+        logging.info(" - columns with different datatypes in the DataFrame compared to Iceberg table:")
         for name, (table_dtype, df_dtype) in changed_columns.items():
-            logging.info(f" - {name}: Table type = {table_dtype}, DataFrame type = {df_dtype}")
-            logging.info(f"Casting column '{name}' from {df_dtype} to {table_dtype}")
-            df = df.withColumn(name, F.col(name).cast(df_dtype))
-
+            logging.info(f"  - {name}:")
+            logging.info(f"   - {name}: Table type = {table_dtype}")
+            logging.info(f"   - {name}:    Df type = {df_dtype}")
+            # logging.info(f"Casting column '{name}' from {df_dtype} to {table_dtype}")
+            # df = df.withColumn(name, F.col(name).cast(df_dtype))
 
     else:
         logging.info(" - schemas match!")

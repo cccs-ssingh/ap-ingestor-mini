@@ -72,8 +72,8 @@ def log_spark_config(spark):
     # Extract and log relevant configuration settings
     logging.info("==== Spark Session Configuration ====")
     # Sort and print the dictionary by key
-    for key in sorted(all_configs):
-        print(f"{key}: {all_configs[key]}")
+    for key, value in sorted(all_configs):
+        print(f"{key}: {value}")
     # logging.info(f"          App Name: {conf.get('spark.app.name')}")
     # logging.info(f"            Master: {conf.get('spark.master')}")
     # logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")

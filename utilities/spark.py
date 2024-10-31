@@ -170,9 +170,13 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         log_schema_changes(spark, iceberg_table, df)
 
         if 'nvd' in iceberg_table:
-            df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-            df = df.withColumn("configurations", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-            df = df.withColumn("metrics", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+            logging.info("manual casting of columns")
+            # Convert the nested column to a string
+            df = df.withColumn("cveTags", col("cveTags").cast("string"))
+
+            # df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+            # df = df.withColumn("configurations", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+            # df = df.withColumn("metrics", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
 
         logging.info(f"appending to existing table")
         df.writeTo(iceberg_table) \
@@ -227,8 +231,6 @@ def log_schema_changes(spark, iceberg_table, df):
             logging.info(f"  - {name}:")
             logging.info(f"   -     Table type = {data_type_table}")
             logging.info(f"   - DataFrame type = {data_type_dataframe}")
-            # logging.info(f"Casting column '{name}' from {df_dtype} to {table_dtype}")
-            # df = df.withColumn(name, F.col(name).cast(df_dtype))
 
     else:
         logging.info(" - schemas match!")

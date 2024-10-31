@@ -71,8 +71,9 @@ def log_spark_config(spark):
 
     # Extract and log relevant configuration settings
     logging.info("==== Spark Session Configuration ====")
-    for key, value in all_configs:
-        print(f"{key}: {value}")
+    # Sort and print the dictionary by key
+    for key in sorted(all_configs):
+        print(f"{key}: {all_configs[key]}")
     # logging.info(f"          App Name: {conf.get('spark.app.name')}")
     # logging.info(f"            Master: {conf.get('spark.master')}")
     # logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
@@ -151,8 +152,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # New table
     logging.info(f"")
+    logging.info(f"Checking existing table")
     if not spark.catalog.tableExists(iceberg_table):
-        logging.info(f"Table doesn't exist:")
+        logging.info(f"- table doesn't exist!")
         logging.info(f"- creating a new Iceberg Table")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
@@ -161,7 +163,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             .create()
     # Existing Table
     else:
-        logging.info(f"Table exists")
+        logging.info(f"- table exists!")
         log_schema_changes(spark, iceberg_table, df)
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \

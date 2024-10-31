@@ -7,6 +7,7 @@ from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.functions import lit, to_date
+from pyspark.sql import functions as F
 
 
 def format_size(bytes_size):
@@ -212,7 +213,11 @@ def log_schema_changes(spark, iceberg_table, df):
 
         logging.info("- changed columns in DataFrame compared to Iceberg table:")
         for name, (table_dtype, df_dtype) in changed_columns.items():
-            logging.info(f"  - {name}: Table type = {table_dtype}, DataFrame type = {df_dtype}")
+            logging.info(f" - {name}: Table type = {table_dtype}, DataFrame type = {df_dtype}")
+            logging.info(f"Casting column '{name}' from {df_dtype} to {table_dtype}")
+            df = df.withColumn(name, F.col(name).cast(df_dtype))
+
+
     else:
         logging.info(" - schemas match!")
         logging.info("")

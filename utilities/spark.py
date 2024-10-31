@@ -167,7 +167,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     else:
         logging.info(f"- table exists!")
         log_schema_changes(spark, iceberg_table, df)
-        if 'nvd' in iceberg_table:
+        # if 'nvd' in iceberg_table:
 
         logging.info(f"appending to existing table")
         df.writeTo(iceberg_table) \

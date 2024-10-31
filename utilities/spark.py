@@ -158,6 +158,13 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"Checking for existing table")
     if not spark.catalog.tableExists(iceberg_table):
         logging.info(f"- no table found! Creating a new Iceberg Table.")
+
+        # NVD
+        if 'nvd' in iceberg_table:
+            logging.info("manual casting of columns")
+            # df = df.withColumn("cveTags", col("cveTags").cast("string"))
+            df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
@@ -169,10 +176,10 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         logging.info(f"- table exists!")
         log_schema_changes(spark, iceberg_table, df)
 
-        if 'nvd' in iceberg_table:
-            logging.info("manual casting of columns")
-            # Convert the nested column to a string
-            df = df.withColumn("cveTags", col("cveTags").cast("string"))
+        # if 'nvd' in iceberg_table:
+        #     logging.info("manual casting of columns")
+        #     # Convert the nested column to a string
+        #     df = df.withColumn("cveTags", col("cveTags").cast("string"))
 
             # df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
             # df = df.withColumn("configurations", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))

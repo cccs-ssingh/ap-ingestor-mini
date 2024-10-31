@@ -27,16 +27,14 @@ def create_spark_session(spark_cfg, app_name):
     if spark_cfg.get('config'):
         # Dynamic spark config
         cfg = json.loads(spark_cfg.get('config'))
-        spark = SparkSession.builder \
+
+        spark_builder = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
             .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
             .config("spark.cores.max", int(cfg['spark.executor.cores']) * int(cfg['spark.executor.instances']))
 
         for key, value in cfg.items():
-            spark = spark.config(key, value)
-
-        spark = spark.getOrCreate()
-        log_spark_config(spark)
+            spark_builder.config(key, value)
 
     else:
         # cmd-line specified config
@@ -51,8 +49,8 @@ def create_spark_session(spark_cfg, app_name):
             .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
             .config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"]) \
 
-        spark = spark_builder.getOrCreate()
-        log_spark_config(spark)
+    spark = spark_builder.getOrCreate()
+    log_spark_config(spark)
 
     # if spark_cfg['k8s']['name_space']:
     #     logging.info("- configuring spark for Kubernetes mode.")
@@ -71,7 +69,6 @@ def log_spark_config(spark):
 
     # Extract and log relevant configuration settings
     logging.info("==== Spark Session Configuration ====")
-    # Sort and print the dictionary by key
     for key, value in sorted(all_configs):
         print(f"{key}: {value}")
     # logging.info(f"          App Name: {conf.get('spark.app.name')}")
@@ -94,8 +91,6 @@ def read_data(spark, file_cfg, input_files):
         df = spark.read.parquet(input_files)
 
     elif file_cfg['type'] == "avro":
-        # spark.conf.set("spark.sql.avro.datetimeRebaseModeInRead", "LEGACY")
-        # spark.conf.set(               "spark.sql.avro.parseMode", "PERMISSIVE")
         df = spark.read.format("avro").load(input_files)
 
     elif file_cfg['type'] == "json":

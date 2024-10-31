@@ -8,6 +8,8 @@ from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
 from pyspark.sql.functions import lit, to_date
 from pyspark.sql import functions as F
+from pyspark.sql.types import StructType, ArrayType
+
 
 
 def format_size(bytes_size):
@@ -168,6 +170,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         logging.info(f"- table exists!")
         log_schema_changes(spark, iceberg_table, df)
         # if 'nvd' in iceberg_table:
+        #     df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
 
         logging.info(f"appending to existing table")
         df.writeTo(iceberg_table) \
@@ -194,6 +197,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info('Success! Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
+
 def log_schema_changes(spark, iceberg_table, df):
     logging.info("- comparing existing table schema to dataframe:")
     table_schema = spark.table(iceberg_table).schema
@@ -203,28 +207,49 @@ def log_schema_changes(spark, iceberg_table, df):
     df_schema = df.schema
     df_fields = {field.name: field.dataType for field in df_schema.fields}
 
-    # Find new or changed columns
+    # Find new columns that exist in DataFrame but not in the Iceberg table
     new_columns = {name: dtype for name, dtype in df_fields.items() if name not in table_fields}
     if new_columns:
         logging.info(" - new columns in DataFrame not in Iceberg table:")
         for name, data_type in new_columns.items():
             logging.info(f"  - {name}: {data_type}")
 
-    # Identify columns where the DataFrame's type differs from the table's type
+        # Generate ALTER TABLE commands for new columns
+        logging.info("Suggested ALTER TABLE commands for new columns:")
+        for name, dtype in new_columns.items():
+            column_type = dtype.simpleString()
+            logging.info(f"ALTER TABLE {iceberg_table} ADD COLUMN {name} {column_type};")
+
+    # Identify columns with datatype mismatches between DataFrame and Iceberg table
     changed_columns = {}
     for name, dtype in df_fields.items():
         if name in table_fields and table_fields[name] != dtype:
             changed_columns[name] = (table_fields[name], dtype)
+
     if changed_columns:
         logging.info(" - columns with different datatypes in the DataFrame compared to Iceberg table:")
         for name, (table_data_type, df_data_type) in changed_columns.items():
             logging.info(f"  - {name}:")
-            logging.info(f"   -     Table type = {table_data_type}")
+            logging.info(f"   - Table type = {table_data_type}")
             logging.info(f"   - DataFrame type = {df_data_type}")
-            # logging.info(f"Casting column '{name}' from {df_dtype} to {table_dtype}")
-            # df = df.withColumn(name, F.col(name).cast(df_dtype))
+
+        # Generate ALTER TABLE commands for changed columns (if nested types differ)
+        logging.info("Suggested ALTER TABLE commands for datatype mismatches:")
+        for name, (table_data_type, df_data_type) in changed_columns.items():
+            # For complex types like nested structs or arrays, handle individual fields
+            if isinstance(df_data_type, (StructType, ArrayType)):
+                # Recursively identify missing fields in complex types
+                for new_field in df_data_type.fields:
+                    if new_field.name not in [f.name for f in
+                                              table_data_type.fields]:  # Check if nested field is missing
+                        field_type = new_field.dataType.simpleString()
+                        nested_field_name = f"{name}.{new_field.name}"
+                        logging.info(f"ALTER TABLE {iceberg_table} ADD COLUMN {nested_field_name} {field_type};")
+            else:
+                # For non-complex types, suggest casting
+                logging.info(
+                    f"# Consider manual review or casting for column '{name}' from {df_data_type} to {table_data_type}")
 
     else:
         logging.info(" - schemas match!")
         logging.info("")
-

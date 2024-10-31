@@ -63,21 +63,27 @@ def create_spark_session(spark_cfg, app_name):
     return spark
 
 def log_spark_config(spark):
+    # Extract and log relevant configuration settings
+
+    # all_configs = spark.sparkContext.getConf().getAll()
+    # for key, value in sorted(all_configs):
+    #     print(f"{key}: {value}")
+
     # Access the Spark configuration
     conf = spark.sparkContext.getConf()
-    all_configs = spark.sparkContext.getConf().getAll()
-
-    # Extract and log relevant configuration settings
     logging.info("==== Spark Session Configuration ====")
-    for key, value in sorted(all_configs):
-        print(f"{key}: {value}")
-    # logging.info(f"          App Name: {conf.get('spark.app.name')}")
-    # logging.info(f"            Master: {conf.get('spark.master')}")
-    # logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
-    # logging.info(f"   Executor Memory: {conf.get('spark.executor.memory', 'Not Set')}")
-    # logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")
-    # logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
-    # logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
+    logging.info(f"          App Name: {conf.get('spark.app.name')}")
+    logging.info(f"            Master: {conf.get('spark.master')}")
+    logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
+    logging.info(f"   Executor Memory: {conf.get('spark.executor.memory', 'Not Set')}")
+    logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")
+    logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
+    logging.info(f"         Cores MAX: {conf.get('spark.cores.max', 'Not Set')}")
+    logging.info(f"   Memory Fraction: {conf.get('spark.memory.fraction', 'Not Set')}")
+    logging.info(f"   Shuffle Service: {conf.get('spark.shuffle.service.enabled', 'Not Set')}")
+    logging.info(f"Dynamic Allocation: {conf.get('spark.dynamicAllocation.enabled', 'Not Set')}")
+    logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
+    logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
     logging.info("=====================================")
 
 # Read data based on the file type

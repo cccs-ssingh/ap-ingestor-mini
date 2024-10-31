@@ -205,15 +205,15 @@ def log_schema_changes(spark, iceberg_table, df):
 
     # Find new or changed columns
     new_columns = {name: dtype for name, dtype in df_fields.items() if name not in table_fields}
-    changed_columns = {name: (table_fields[name], dtype) for name, dtype in df_fields.items()
-                       if name in table_fields and table_fields[name] != dtype}
-
-    # Log schema differences if there are any
-    if new_columns or changed_columns:
+    if new_columns:
         logging.info(" - new columns in DataFrame not in Iceberg table:")
         for name, data_type in new_columns.items():
             logging.info(f"  - {name}: {data_type}")
 
+    # Find differences in column data types
+    changed_columns = {name: (table_fields[name], dtype) for name, dtype in df_fields.items()
+                       if name in table_fields and table_fields[name] != dtype}
+    if changed_columns:
         logging.info(" - columns with different datatypes in the DataFrame compared to Iceberg table:")
         for name, (table_data_type, df_data_type) in changed_columns.items():
             logging.info(f"  - {name}:")

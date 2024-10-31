@@ -154,15 +154,15 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # New table
     logging.info(f"")
-    logging.info(f"Checking existing table")
+    logging.info(f"Checking for existing table")
     if not spark.catalog.tableExists(iceberg_table):
-        logging.info(f"- table doesn't exist!")
-        logging.info(f"- creating a new Iceberg Table")
+        logging.info(f"- no table found! Creating a new Iceberg Table.")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
             .partitionedBy(cfg_iceberg['partition']['field']) \
             .create()
+
     # Existing Table
     else:
         logging.info(f"- table exists!")
@@ -170,11 +170,11 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         # if 'nvd' in iceberg_table:
         #
 
-        df.writeTo(iceberg_table) \
-            .option("merge-schema", "true") \
-            .tableProperty("location", cfg_iceberg['table']['location']) \
-            .partitionedBy(cfg_iceberg['partition']['field']) \
-            .append()
+        # df.writeTo(iceberg_table) \
+        #     .option("merge-schema", "true") \
+        #     .tableProperty("location", cfg_iceberg['table']['location']) \
+        #     .partitionedBy(cfg_iceberg['partition']['field']) \
+        #     .append()
     #
     # # Calculate time taken
     # time_taken = time.time() - start_time
@@ -211,14 +211,14 @@ def log_schema_changes(spark, iceberg_table, df):
     # Log schema differences if there are any
     if new_columns or changed_columns:
         logging.info(" - new columns in DataFrame not in Iceberg table:")
-        for name, dtype in new_columns.items():
-            logging.info(f"  - {name}: {dtype}")
+        for name, data_type in new_columns.items():
+            logging.info(f"  - {name}: {data_type}")
 
         logging.info(" - columns with different datatypes in the DataFrame compared to Iceberg table:")
-        for name, (table_dtype, df_dtype) in changed_columns.items():
+        for name, (table_data_type, df_data_type) in changed_columns.items():
             logging.info(f"  - {name}:")
-            logging.info(f"   - {name}: Table type = {table_dtype}")
-            logging.info(f"   - {name}:    Df type = {df_dtype}")
+            logging.info(f"   -     Table type = {table_data_type}")
+            logging.info(f"   - DataFrame type = {df_data_type}")
             # logging.info(f"Casting column '{name}' from {df_dtype} to {table_dtype}")
             # df = df.withColumn(name, F.col(name).cast(df_dtype))
 

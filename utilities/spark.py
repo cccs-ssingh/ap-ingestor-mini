@@ -6,9 +6,8 @@ import json
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
-from pyspark.sql.functions import lit, to_date
-from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, ArrayType
+from pyspark.sql.functions import lit, to_date, col, from_json
+from pyspark.sql.types import StringType, ArrayType
 
 
 
@@ -169,8 +168,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     else:
         logging.info(f"- table exists!")
         log_schema_changes(spark, iceberg_table, df)
-        # if 'nvd' in iceberg_table:
-        #     df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+        if 'nvd' in iceberg_table:
+            df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
 
         logging.info(f"appending to existing table")
         df.writeTo(iceberg_table) \
@@ -197,67 +196,38 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info('Success! Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
-
 def log_schema_changes(spark, iceberg_table, df):
     logging.info("- comparing existing table schema to dataframe:")
     table_schema = spark.table(iceberg_table).schema
-    table_fields = {field.name: field.dataType for field in table_schema.fields}
+    table_columns = {field.name: field.dataType for field in table_schema.fields}
 
     # Get the schema of the DataFrame you're writing
     df_schema = df.schema
-    df_fields = {field.name: field.dataType for field in df_schema.fields}
+    dataframe_fields = {field.name: field.dataType for field in df_schema.fields}
 
-    # Find new columns that exist in DataFrame but not in the Iceberg table
-    new_columns = {name: dtype for name, dtype in df_fields.items() if name not in table_fields}
+    # Identify new columns
+    new_columns = {name: dtype for name, dtype in dataframe_fields.items() if name not in table_columns}
     if new_columns:
         logging.info(" - new columns in DataFrame not in Iceberg table:")
         for name, data_type in new_columns.items():
             logging.info(f"  - {name}: {data_type}")
 
-        # Generate ALTER TABLE commands for new columns
-        logging.info("Suggested ALTER TABLE commands for new columns:")
-        for name, dtype in new_columns.items():
-            column_type = dtype.simpleString()
-            logging.info(f"ALTER TABLE {iceberg_table} ADD COLUMN {name} {column_type};")
-
-    # Identify columns with datatype mismatches between DataFrame and Iceberg table
+    # Identify columns with changed formats
     changed_columns = {}
-    for name, dtype in df_fields.items():
-        if name in table_fields and table_fields[name] != dtype:
-            changed_columns[name] = (table_fields[name], dtype)
+    for name, data_type in dataframe_fields.items():
+        if name in table_columns and table_columns[name] != data_type:
+            changed_columns[name] = (table_columns[name], data_type)
 
     if changed_columns:
         logging.info(" - columns with different datatypes in the DataFrame compared to Iceberg table:")
-        for name, (table_data_type, df_data_type) in changed_columns.items():
+        for name, (data_type_table, data_type_dataframe) in changed_columns.items():
             logging.info(f"  - {name}:")
-            logging.info(f"   - Table type = {table_data_type}")
-            logging.info(f"   - DataFrame type = {df_data_type}")
+            logging.info(f"   -     Table type = {data_type_table}")
+            logging.info(f"   - DataFrame type = {data_type_dataframe}")
+            # logging.info(f"Casting column '{name}' from {df_dtype} to {table_dtype}")
+            # df = df.withColumn(name, F.col(name).cast(df_dtype))
 
-            # Generate ALTER TABLE commands for datatype mismatches in nested fields
-            logging.info("Suggested ALTER TABLE commands for datatype mismatches:")
-            for name, (table_data_type, df_data_type) in changed_columns.items():
-                # Handle complex types like StructType or ArrayType with StructType elements
-                if isinstance(df_data_type, StructType):
-                    # Loop through each field in the struct
-                    for new_field in df_data_type.fields:
-                        if new_field.name not in [f.name for f in
-                                                  table_data_type.fields]:  # Check if nested field is missing
-                            field_type = new_field.dataType.simpleString()
-                            nested_field_name = f"{name}.{new_field.name}"
-                            logging.info(f"ALTER TABLE {iceberg_table} ADD COLUMN {nested_field_name} {field_type};")
-                elif isinstance(df_data_type, ArrayType) and isinstance(df_data_type.elementType, StructType):
-                    # Handle ArrayType with StructType elements
-                    for new_field in df_data_type.elementType.fields:
-                        if not isinstance(table_data_type, ArrayType) or new_field.name not in [f.name for f in
-                                                                                                table_data_type.elementType.fields]:
-                            field_type = new_field.dataType.simpleString()
-                            nested_field_name = f"{name}.element.{new_field.name}"
-                            logging.info(f"ALTER TABLE {iceberg_table} ADD COLUMN {nested_field_name} {field_type};")
-                else:
-                    # For non-complex types or type mismatches
-                    logging.info(
-                        f"# Consider manual review or casting for column '{name}' from {df_data_type} to {table_data_type}")
+    else:
+        logging.info(" - schemas match!")
+        logging.info("")
 
-        else:
-            logging.info(" - schemas match!")
-            logging.info("")

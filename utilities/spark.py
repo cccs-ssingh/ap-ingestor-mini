@@ -88,7 +88,7 @@ def log_spark_config(spark):
 
 # Read data based on the file type
 def read_data(spark, file_cfg, input_files):
-    logging.debug(f"- reading data type: {file_cfg['type']}")
+    logging.info(f"- reading data type: {file_cfg['type']}")
 
     if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
@@ -129,10 +129,10 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info("")
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
-    # # Get the snapshot before the write
+    # Get the snapshot before the write
     # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
-    # # Write the dataframe
+    # Write the dataframe
     logging.info(f"Reading data from: {cfg_iceberg['table']['location']}")
 
     # Start timing

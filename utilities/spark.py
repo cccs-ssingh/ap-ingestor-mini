@@ -233,23 +233,31 @@ def log_schema_changes(spark, iceberg_table, df):
             logging.info(f"   - Table type = {table_data_type}")
             logging.info(f"   - DataFrame type = {df_data_type}")
 
-        # Generate ALTER TABLE commands for changed columns (if nested types differ)
-        logging.info("Suggested ALTER TABLE commands for datatype mismatches:")
-        for name, (table_data_type, df_data_type) in changed_columns.items():
-            # For complex types like nested structs or arrays, handle individual fields
-            if isinstance(df_data_type, (StructType, ArrayType)):
-                # Recursively identify missing fields in complex types
-                for new_field in df_data_type.fields:
-                    if new_field.name not in [f.name for f in
-                                              table_data_type.fields]:  # Check if nested field is missing
-                        field_type = new_field.dataType.simpleString()
-                        nested_field_name = f"{name}.{new_field.name}"
-                        logging.info(f"ALTER TABLE {iceberg_table} ADD COLUMN {nested_field_name} {field_type};")
-            else:
-                # For non-complex types, suggest casting
-                logging.info(
-                    f"# Consider manual review or casting for column '{name}' from {df_data_type} to {table_data_type}")
+            # Generate ALTER TABLE commands for datatype mismatches in nested fields
+            logging.info("Suggested ALTER TABLE commands for datatype mismatches:")
+            for name, (table_data_type, df_data_type) in changed_columns.items():
+                # Handle complex types like StructType or ArrayType with StructType elements
+                if isinstance(df_data_type, StructType):
+                    # Loop through each field in the struct
+                    for new_field in df_data_type.fields:
+                        if new_field.name not in [f.name for f in
+                                                  table_data_type.fields]:  # Check if nested field is missing
+                            field_type = new_field.dataType.simpleString()
+                            nested_field_name = f"{name}.{new_field.name}"
+                            logging.info(f"ALTER TABLE {iceberg_table} ADD COLUMN {nested_field_name} {field_type};")
+                elif isinstance(df_data_type, ArrayType) and isinstance(df_data_type.elementType, StructType):
+                    # Handle ArrayType with StructType elements
+                    for new_field in df_data_type.elementType.fields:
+                        if not isinstance(table_data_type, ArrayType) or new_field.name not in [f.name for f in
+                                                                                                table_data_type.elementType.fields]:
+                            field_type = new_field.dataType.simpleString()
+                            nested_field_name = f"{name}.element.{new_field.name}"
+                            logging.info(f"ALTER TABLE {iceberg_table} ADD COLUMN {nested_field_name} {field_type};")
+                else:
+                    # For non-complex types or type mismatches
+                    logging.info(
+                        f"# Consider manual review or casting for column '{name}' from {df_data_type} to {table_data_type}")
 
-    else:
-        logging.info(" - schemas match!")
-        logging.info("")
+        else:
+            logging.info(" - schemas match!")
+            logging.info("")

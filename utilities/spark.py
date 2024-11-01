@@ -89,7 +89,7 @@ def log_spark_config(spark):
 
 # Read data based on the file type
 def read_data(spark, file_cfg, input_files):
-    logging.info(f"- reading data type: {file_cfg['type']}")
+    logging.info(f"Data reading options (if any):")
 
     if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
@@ -134,7 +134,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # Write the dataframe
-    logging.info(f"Reading data from: {cfg_iceberg['table']['location']}")
+    # logging.info(f"Reading data from: {cfg_iceberg['table']['location']}")
 
     # Start timing
     start_time = time.time()
@@ -246,7 +246,6 @@ def log_changed_columns(table_fields, dataframe_fields):
             changed_fields[field] = (table_fields[field], data_type)
 
     if changed_fields:
-        json.dumps(changed_fields)
         logging.info("- field change(s) detected:")
         for field, (data_type_table, data_type_dataframe) in changed_fields.items():
             logging.info(f" - {field}:")

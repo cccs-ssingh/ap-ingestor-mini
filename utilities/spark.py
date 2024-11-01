@@ -81,10 +81,9 @@ def log_spark_config(spark):
     logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")
     logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
     logging.info(f"         Cores MAX: {conf.get('spark.cores.max', 'Not Set')}")
-    logging.info(f"   Memory Fraction: {conf.get('spark.memory.fraction', 'Not Set')}")
     logging.info(f"   Shuffle Service: {conf.get('spark.shuffle.service.enabled', 'Not Set')}")
     logging.info(f"Dynamic Allocation: {conf.get('spark.dynamicAllocation.enabled', 'Not Set')}")
-    logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
+    logging.info(f"   Memory Fraction: {conf.get('spark.memory.fraction', 'Not Set')}")
     logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
     logging.info("=====================================")
 
@@ -217,30 +216,27 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
 def log_new_columns(table_fields, dataframe_fields):
-    logging.info("Checking for new columns in the dataframe")
-    new_columns_in_dataframe = {
-        name: datatype
-        for name, datatype in dataframe_fields.items() if name not in table_fields
-    }
+    logging.debug("Checking for new columns in the dataframe")
+    new_columns_in_dataframe = {name: datatype for name, datatype in dataframe_fields.items() if name not in table_fields}
     if new_columns_in_dataframe:
         for field, data_type in new_columns_in_dataframe.items():
             logging.info(f" - {field}: {data_type}")
-    logging.info("- done")
+    logging.debug("- done")
 
 def add_missing_columns_to_df(table_fields, dataframe_fields, df):
-    logging.info("Checking for missing columns in the dataframe")
+    logging.debug("Checking for missing columns in the dataframe")
 
     missing_columns = set(table_fields) - set(dataframe_fields)
     for column in missing_columns:
         column_type = table_fields[column]
-        logging.info(f"Adding missing column: {column} with type {column_type}")
+        logging.info(f"- {column} {column_type} -> missing in dataframe, added")
         df = df.withColumn(column, lit(None).cast(column_type))  # Updates to a new DataFrame
 
-    logging.info("- done")
+    logging.debug("- done")
     return df
 
 def log_changed_columns(table_fields, dataframe_fields):
-    logging.info("Checking for changed column data types")
+    logging.debug("Checking for changed column data types")
     changed_fields = {}
 
     for field, data_type in dataframe_fields.items():
@@ -255,4 +251,4 @@ def log_changed_columns(table_fields, dataframe_fields):
             logging.info(f"   - DataFrame type = {data_type_dataframe}")
 
     else:
-        logging.info("- done")
+        logging.debug("- done")

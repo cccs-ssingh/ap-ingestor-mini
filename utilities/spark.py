@@ -189,7 +189,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
         # Identify columns with changed formats
         if log_changed_columns(table_fields, dataframe_fields):
-            align_schema(df, table_schema)
+            align_schema(df, table_schema, spark)
 
         # Append to existing table
         df.writeTo(iceberg_table) \
@@ -256,7 +256,7 @@ def log_changed_columns(table_fields, dataframe_fields):
         logging.debug("- done")
 
 
-def align_schema(df, table_schema):
+def align_schema(df, table_schema, spark):
     """
     Recursively aligns the schema of the DataFrame to match the table schema.
     """

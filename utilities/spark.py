@@ -174,18 +174,17 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Existing Table
     else:
         logging.info(f"- table exists!")
-        log_schema_changes(spark, iceberg_table, df)
 
         # NVD
         if 'nvd' in iceberg_table:
             logging.info("manual casting of columns")
             # df = df.withColumn("cveTags", col("cveTags").cast("string"))
             df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-
             # df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
             # df = df.withColumn("configurations", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
             # df = df.withColumn("metrics", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
 
+        log_schema_changes(spark, iceberg_table, df)
         logging.info(f"appending to existing table")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \

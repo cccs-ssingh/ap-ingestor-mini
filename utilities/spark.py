@@ -6,7 +6,7 @@ import json
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
-from pyspark.sql.functions import lit, to_timestamp, col, from_json, to_json
+from pyspark.sql.functions import lit, to_date, to_timestamp, col, from_json, to_json
 from pyspark.sql.types import StringType, ArrayType, StructType
 
 
@@ -148,7 +148,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"Populating column: {cfg_iceberg['partition']['field']} with value: {cfg_iceberg['partition']['value']}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
-        to_timestamp(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
+        to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
     logging.info(f"- populated!")
 
@@ -231,8 +231,8 @@ def add_missing_columns_to_df(table_fields, dataframe_fields, df):
     missing_columns = set(table_fields) - set(dataframe_fields)
     for column in missing_columns:
         column_type = table_fields[column]
-        logging.info(f"- {column} {column_type} -> missing in dataframe, added")
-        df = df.withColumn(column, lit(None).cast(column_type))  # Updates to a new DataFrame
+        logging.info(f"- added: {column} {column_type}")
+        df = df.withColumn(column, lit(None).cast(column_type))
 
     logging.info("- done")
     return df

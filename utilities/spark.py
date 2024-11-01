@@ -6,8 +6,8 @@ import json
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
-from pyspark.sql.functions import lit, to_date, col, from_json
-from pyspark.sql.types import StringType, ArrayType
+from pyspark.sql.functions import lit, to_date, col, from_json, transform
+from pyspark.sql.types import StringType, ArrayType, StructType
 
 
 
@@ -159,9 +159,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         logging.info("manual casting of columns")
         # df = df.withColumn("cveTags", col("cveTags").cast("string"))
         df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-        # df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-        # df = df.withColumn("configurations", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-        # df = df.withColumn("metrics", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
 
     # New table
     logging.info(f"")
@@ -205,7 +202,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
 def log_schema_changes(spark, iceberg_table, df):
-    logging.info("- comparing existing table schema to dataframe:")
+    logging.info("")
+    logging.info("Comparing existing table schema to dataframe:")
+
     table_schema = spark.table(iceberg_table).schema
     table_columns = {field.name: field.dataType for field in table_schema.fields}
 
@@ -216,9 +215,9 @@ def log_schema_changes(spark, iceberg_table, df):
     # Identify new columns
     new_columns = {name: dtype for name, dtype in dataframe_fields.items() if name not in table_columns}
     if new_columns:
-        logging.info(" - new columns in DataFrame not in Iceberg table:")
+        logging.info("- new columns in DataFrame not in Iceberg table:")
         for name, data_type in new_columns.items():
-            logging.info(f"  - {name}: {data_type}")
+            logging.info(f" - {name}: {data_type}")
 
     # Identify columns with changed formats
     changed_columns = {}
@@ -227,13 +226,54 @@ def log_schema_changes(spark, iceberg_table, df):
             changed_columns[name] = (table_columns[name], data_type)
 
     if changed_columns:
-        logging.info(" - columns with different datatypes in the DataFrame compared to Iceberg table:")
+        logging.info("- columns with different datatypes in the DataFrame compared to Iceberg table:")
         for name, (data_type_table, data_type_dataframe) in changed_columns.items():
-            logging.info(f"  - {name}:")
+            logging.info(f" - {name}:")
             logging.info(f"   -     Table type = {data_type_table}")
             logging.info(f"   - DataFrame type = {data_type_dataframe}")
+            if len(data_type_table) > len(data_type_dataframe):
+                logging.warning("  - dataframe is missing fields found in the iceberg table")
+                align_schema_with_table(df, table_schema, name)
 
     else:
         logging.info(" - schemas match!")
         logging.info("")
 
+def align_schema_with_table(df, table_schema, column_name=""):
+    """
+    Recursively aligns the DataFrame schema with the Iceberg table schema by adding missing fields with null values.
+
+    Args:
+        df (DataFrame): The DataFrame to align.
+        table_schema (StructType): The schema of the Iceberg table.
+        column_name (str): The name of the current column being processed (used for nested fields).
+
+    Returns:
+        DataFrame: The DataFrame with aligned schema.
+    """
+    logging.info("")
+    logging.info("Filling in empty fields as null")
+
+    for field in table_schema.fields:
+        full_column_name = f"{column_name}.{field.name}" if column_name else field.name
+
+        if isinstance(field.dataType, StructType):
+            # If the field is a StructType, apply the function recursively
+            df = align_schema_with_table(df, field.dataType, full_column_name)
+
+        elif full_column_name not in df.columns:
+            # If the field is missing, add it as null
+            df = df.withColumn(full_column_name, lit(None).cast(field.dataType))
+
+        elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
+            # For nested array of struct types, apply alignment to the elementType
+            element_schema = field.dataType.elementType
+            array_column = f"{column_name}.{field.name}" if column_name else field.name
+
+            # Flatten the array elements, align the schema, and reassemble as an array
+            df = df.withColumn(
+                array_column,
+                transform(array_column, lambda x: align_schema_with_table(x, element_schema))
+            )
+
+    logging.info('- filled')

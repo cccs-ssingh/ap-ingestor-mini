@@ -206,29 +206,29 @@ def log_schema_changes(spark, iceberg_table, df):
     logging.info("Comparing existing table schema to dataframe:")
 
     table_schema = spark.table(iceberg_table).schema
-    table_columns = {field.name: field.dataType for field in table_schema.fields}
+    table_fields = {field.name: field.dataType for field in table_schema.fields}
 
     # Get the schema of the DataFrame you're writing
-    df_schema = df.schema
-    dataframe_fields = {field.name: field.dataType for field in df_schema.fields}
+    dataframe_schema = df.schema
+    dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
 
     # Identify new columns
-    new_columns = {name: dtype for name, dtype in dataframe_fields.items() if name not in table_columns}
-    if new_columns:
+    new_fields = {name: dtype for name, dtype in dataframe_fields.items() if name not in table_fields}
+    if new_fields:
         logging.info("- new columns in DataFrame not in Iceberg table:")
-        for column, data_type in new_columns.items():
-            logging.info(f" - {column}: {data_type}")
+        for field, data_type in new_fields.items():
+            logging.info(f" - {field}: {data_type}")
 
     # Identify columns with changed formats
-    changed_columns = {}
-    for column, data_type in dataframe_fields.items():
-        if column in table_columns and table_columns[column] != data_type:
-            changed_columns[column] = (table_columns[column], data_type)
+    changed_fields = {}
+    for field, data_type in dataframe_fields.items():
+        if field in table_fields and table_fields[field] != data_type:
+            changed_fields[field] = (table_fields[field], data_type)
 
-    if changed_columns:
-        logging.info("- column change detected:")
-        for column, (data_type_table, data_type_dataframe) in changed_columns.items():
-            logging.info(f" - {column}:")
+    if changed_fields:
+        logging.info("- field change detected:")
+        for field, (data_type_table, data_type_dataframe) in changed_fields.items():
+            logging.info(f" - {field}:")
             logging.info(f"   -     Table type = {data_type_table}")
             logging.info(f"   - DataFrame type = {data_type_dataframe}")
 

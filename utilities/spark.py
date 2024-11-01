@@ -162,10 +162,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # New table
     logging.info(f"")
-    logging.info(f"Checking for existing table")
     if not spark.catalog.tableExists(iceberg_table):
-        logging.info(f"- no table found! Creating a new Iceberg Table.")
-
+        logging.info(f"No table found! Creating a new Iceberg Table.")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
@@ -174,9 +172,26 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Existing Table
     else:
-        logging.info(f"- table exists!")
-        df = compare_schemas(spark, iceberg_table, df)  # Reassign df to capture any changes
-        logging.info("Appending to existing table with merged schema")
+        logging.info("Comparing existing table schema to dataframe")
+
+        # Get Schemas
+        table_schema = spark.table(iceberg_table).schema
+        table_fields = {field.name: field.dataType for field in table_schema.fields}
+        dataframe_schema = df.schema
+        dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
+
+        # Log new columns
+        log_new_columns(table_fields, dataframe_fields)
+
+        # Add columns that exist in the Table but are missing in the Dataframe
+        df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
+
+        # Log any columnds with changed data types
+
+        # Identify columns with changed formats
+        log_changed_columns(table_fields, dataframe_fields)
+
+        # Append to existing table
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
@@ -201,52 +216,43 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info('Success! Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
-def compare_schemas(spark, iceberg_table, df):
-    logging.info("Comparing existing table schema to dataframe:")
-
-    # Get Schemas
-    # Table
-    table_schema = spark.table(iceberg_table).schema
-    table_fields = {field.name: field.dataType for field in table_schema.fields}
-    # DataFrame
-    dataframe_schema = df.schema
-    dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
-
-    # Compare Columns
-    # New columns in Dataframe
+def log_new_columns(table_fields, dataframe_fields):
     logging.info("Checking for new columns in the dataframe")
-    new_columns_in_dataframe = {name: datatype for name, datatype in dataframe_fields.items() if name not in table_fields}
+    new_columns_in_dataframe = {
+        name: datatype
+        for name, datatype in dataframe_fields.items() if name not in table_fields
+    }
     if new_columns_in_dataframe:
         for field, data_type in new_columns_in_dataframe.items():
             logging.info(f" - {field}: {data_type}")
     logging.info("- done")
 
-    # Missing columns in Dataframe
+def add_missing_columns_to_df(table_fields, dataframe_fields, df):
     logging.info("Checking for missing columns in the dataframe")
+
     missing_columns = set(table_fields) - set(dataframe_fields)
     for column in missing_columns:
         column_type = table_fields[column]
         logging.info(f"Adding missing column: {column} with type {column_type}")
-        # Add the missing column with the correct data type
         df = df.withColumn(column, lit(None).cast(column_type))  # Updates to a new DataFrame
-    logging.info("- done")
 
-    # Identify columns with changed formats
+    logging.info("- done")
+    return df
+
+def log_changed_columns(table_fields, dataframe_fields):
+    logging.info("Checking for changed column data types")
     changed_fields = {}
+
     for field, data_type in dataframe_fields.items():
         if field in table_fields and table_fields[field] != data_type:
             changed_fields[field] = (table_fields[field], data_type)
 
     if changed_fields:
-        logging.info("- field change detected:")
+        logging.info("- field change(s) detected:")
         for field, (data_type_table, data_type_dataframe) in changed_fields.items():
             logging.info(f" - {field}:")
             logging.info(f"   -     Table type = {data_type_table}")
             logging.info(f"   - DataFrame type = {data_type_dataframe}")
 
     else:
-        logging.info(" - schemas match!")
-        logging.info("")
-
-    # Return the modified DataFrame with added columns if any
-    return df
+        logging.info("- done")

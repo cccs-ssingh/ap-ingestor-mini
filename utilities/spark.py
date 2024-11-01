@@ -272,7 +272,7 @@ def align_schema(df, table_schema, spark):
             # Handle nested StructType recursively
             if isinstance(field.dataType, StructType) and isinstance(df_field_type, StructType):
                 nested_df = df.selectExpr(f"`{field.name}`.*")  # Extract nested columns for comparison
-                aligned_nested_df = align_schema(nested_df, field.dataType)
+                aligned_nested_df = align_schema(nested_df, field.dataType, spark)
                 # Reassemble the nested structure with aligned schema
                 df = df.drop(field.name).withColumn(field.name, aligned_nested_df)
 
@@ -280,7 +280,11 @@ def align_schema(df, table_schema, spark):
             elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
                 element_type = field.dataType.elementType
                 # Create an empty DataFrame to align element schema
-                aligned_element_schema = align_schema(spark.createDataFrame([], element_type), element_type).schema
+                aligned_element_schema = align_schema(
+                    spark.createDataFrame([], element_type),
+                    element_type,
+                    spark
+                ).schema
                 df = df.withColumn(
                     field.name,
                     col(field.name).cast(ArrayType(aligned_element_schema))

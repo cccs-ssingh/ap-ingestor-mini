@@ -245,6 +245,7 @@ def log_changed_columns(table_fields, dataframe_fields):
             changed_fields[field] = (table_fields[field], data_type)
 
     if changed_fields:
+        json.dumps(changed_fields)
         logging.info("- field change(s) detected:")
         for field, (data_type_table, data_type_dataframe) in changed_fields.items():
             logging.info(f" - {field}:")

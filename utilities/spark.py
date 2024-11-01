@@ -231,7 +231,7 @@ def log_schema_changes(spark, iceberg_table, df):
             logging.info(f" - {name}:")
             logging.info(f"   -     Table type = {data_type_table}")
             logging.info(f"   - DataFrame type = {data_type_dataframe}")
-            if len(data_type_table) > len(data_type_dataframe):
+            if len(str(data_type_table)) > len(str(data_type_dataframe)):
                 logging.warning("  - dataframe is missing fields found in the iceberg table")
                 align_schema_with_table(df, table_schema, name)
 

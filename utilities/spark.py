@@ -256,7 +256,7 @@ def log_changed_columns(table_fields, dataframe_fields):
         logging.debug("- done")
 
 
-def align_schema(df, table_schema: StructType):
+def align_schema(df, table_schema):
     """
     Recursively aligns the schema of the DataFrame to match the table schema.
     """
@@ -266,22 +266,24 @@ def align_schema(df, table_schema: StructType):
             df = df.withColumn(field.name, lit(None).cast(field.dataType))
         else:
             # If the field exists but is nested, check recursively
-            df_field_types = {field.name: field.dataType for field in df.schema.fields}
+            df_field_types = {f.name: f.dataType for f in df.schema.fields}
             df_field_type = df_field_types.get(field.name)
 
+            # Handle nested StructType recursively
             if isinstance(field.dataType, StructType) and isinstance(df_field_type, StructType):
-                # Recursively align nested struct fields
-                nested_df = df.select(col(field.name + ".*"))  # Extract nested columns for comparison
+                nested_df = df.selectExpr(f"`{field.name}`.*")  # Extract nested columns for comparison
                 aligned_nested_df = align_schema(nested_df, field.dataType)
                 # Reassemble the nested structure with aligned schema
                 df = df.drop(field.name).withColumn(field.name, aligned_nested_df)
 
+            # Handle arrays of structs by aligning the struct schema within the array
             elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
-                # Handle arrays of structs by aligning the struct within the array
                 element_type = field.dataType.elementType
+                # Create an empty DataFrame to align element schema
+                aligned_element_schema = align_schema(spark.createDataFrame([], element_type), element_type).schema
                 df = df.withColumn(
                     field.name,
-                    col(field.name).cast(ArrayType(align_schema(df.selectExpr(f"inline({field.name})").schema, element_type)))
+                    col(field.name).cast(ArrayType(aligned_element_schema))
                 )
 
     return df

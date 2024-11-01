@@ -6,7 +6,7 @@ import json
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
-from pyspark.sql.functions import lit, to_date, col, from_json
+from pyspark.sql.functions import lit, to_date, col, from_json, to_json
 from pyspark.sql.types import StringType, ArrayType, StructType
 
 
@@ -156,9 +156,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # NVD
     if 'nvd' in iceberg_table:
         logging.info("applying custom rules to df")
-        for col_name in ["cveTags", "configurations"]:
-        # for col_name in ["cveTags", "configurations", "metrics"]:
-            df = df.withColumn(col_name, from_json(col(col_name).cast("string"), ArrayType(StringType(), True)))
+        df = df.withColumn(       "cveTags",        from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+        df = df.withColumn("configurations", from_json(col("configurations").cast("string"), ArrayType(StringType(), True)))
+        df = df.withColumn("metrics", to_json(col("metrics")))
 
     # New table
     logging.info(f"")

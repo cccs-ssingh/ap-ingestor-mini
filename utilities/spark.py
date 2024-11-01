@@ -237,24 +237,22 @@ def add_missing_columns_to_df(table_fields, dataframe_fields, df):
     logging.info("- done")
     return df
 
+
 def log_changed_columns(table_fields, dataframe_fields):
     logging.info("Checking for changed column data types")
-    changed_fields = {}
+    changes_detected = False
 
     for field, data_type in dataframe_fields.items():
         if field in table_fields and table_fields[field] != data_type:
-            changed_fields[field] = (table_fields[field], data_type)
+            logging.info(f"- {field} type mismatch:")
+            logging.info(f"   -     Table type = {table_fields[field]}")
+            logging.info(f"   - DataFrame type = {data_type}")
+            changes_detected = True
 
-    if changed_fields:
-        logging.info("- field change(s) detected:")
-        for field, (data_type_table, data_type_dataframe) in changed_fields.items():
-            logging.info(f" - {field}:")
-            logging.info(f"   -     Table type = {data_type_table}")
-            logging.info(f"   - DataFrame type = {data_type_dataframe}")
-        return True
+    if not changes_detected:
+        logging.info("- No data type changes detected.")
 
-    else:
-        logging.info("- done")
+    return changes_detected
 
 
 # def align_schema(df, table_schema, spark):

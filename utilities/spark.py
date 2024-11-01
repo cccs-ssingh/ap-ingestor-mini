@@ -179,7 +179,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         dataframe_schema = df.schema
         dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
 
-        # Log new columns
+        # Log new columns - no action needed as merge-schema option handles this
         log_new_columns(table_fields, dataframe_fields)
 
         # Add columns that exist in the Table but are missing in the Dataframe
@@ -188,7 +188,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         # Log any columnds with changed data types
 
         # Identify columns with changed formats
-        log_changed_columns(table_fields, dataframe_fields)
+        if log_changed_columns(table_fields, dataframe_fields):
+            align_schema(df, table_schema)
 
         # Append to existing table
         df.writeTo(iceberg_table) \
@@ -249,6 +250,35 @@ def log_changed_columns(table_fields, dataframe_fields):
             logging.info(f" - {field}:")
             logging.info(f"   -     Table type = {data_type_table}")
             logging.info(f"   - DataFrame type = {data_type_dataframe}")
+        return True
 
     else:
         logging.debug("- done")
+
+
+def align_schema(df, table_schema: StructType):
+    """
+    Recursively aligns the schema of the DataFrame to match the table schema.
+    """
+    for field in table_schema.fields:
+        if field.name not in df.schema.fieldNames():
+            # If the field is missing, add it as null with the correct data type
+            df = df.withColumn(field.name, lit(None).cast(field.dataType))
+        else:
+            # If the field exists but is nested, check recursively
+            df_field_type = dict(df.schema.fields)[field.name].dataType
+            if isinstance(field.dataType, StructType) and isinstance(df_field_type, StructType):
+                # Recursively align nested struct fields
+                nested_df = df.select(col(field.name + ".*"))  # Extract nested columns for comparison
+                aligned_nested_df = align_schema(nested_df, field.dataType)
+                # Reassemble the nested structure with aligned schema
+                df = df.drop(field.name).withColumn(field.name, aligned_nested_df)
+            elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
+                # Handle arrays of structs by aligning the struct within the array
+                element_type = field.dataType.elementType
+                df = df.withColumn(
+                    field.name,
+                    col(field.name).cast(ArrayType(align_schema(df.selectExpr(f"inline({field.name})").schema, element_type)))
+                )
+
+    return df

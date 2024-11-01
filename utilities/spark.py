@@ -156,7 +156,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # NVD
     if 'nvd' in iceberg_table:
         logging.info("applying custom rules to df")
-        for col_name in ["cveTags"]:
+        for col_name in ["cveTags", "configurations"]:
         # for col_name in ["cveTags", "configurations", "metrics"]:
             df = df.withColumn(col_name, from_json(col(col_name).cast("string"), ArrayType(StringType(), True)))
 
@@ -236,7 +236,6 @@ def add_missing_columns_to_df(table_fields, dataframe_fields, df):
 
     logging.info("- done")
     return df
-
 
 def log_changed_columns(table_fields, dataframe_fields):
     logging.info("Checking for changed column data types")

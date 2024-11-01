@@ -156,7 +156,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # NVD
     if 'nvd' in iceberg_table:
         logging.info("applying custom rules to df")
-        for col_name in ["cveTags", "configurations", "metrics"]:
+        for col_name in ["cveTags"]:
+        # for col_name in ["cveTags", "configurations", "metrics"]:
             df = df.withColumn(col_name, from_json(col(col_name).cast("string"), ArrayType(StringType(), True)))
 
     # New table

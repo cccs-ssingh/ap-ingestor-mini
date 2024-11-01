@@ -233,33 +233,39 @@ def log_and_align_schema(spark, iceberg_table, df):
                 df = df.withColumn(name, lit(None).cast(data_type))
 
         # Identify columns with datatype mismatches and add missing nested fields
-        def align_schema(df, table_schema, column_name=""):
+        def align_schema_with_table(df, table_schema, column_name=""):
             for field in table_schema.fields:
                 full_column_name = f"{column_name}.{field.name}" if column_name else field.name
 
+                # Check if the top-level column exists before accessing nested columns
+                if column_name and not df.columns.contains(column_name.split(".")[0]):
+                    continue
+
                 if isinstance(field.dataType, StructType):
                     # Recursively align nested StructType fields
-                    df = align_schema(df, field.dataType, full_column_name)
+                    df = align_schema_with_table(df, field.dataType, full_column_name)
 
                 elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
-                    # Handle ArrayType with StructType elements
-                    array_column = f"{column_name}.{field.name}" if column_name else field.name
+                    # For ArrayType with StructType elements
+                    array_column = full_column_name if column_name else field.name
                     element_schema = field.dataType.elementType
+
+                    # Check existence of the array column in df
                     if array_column in df.columns:
                         df = df.withColumn(
                             array_column,
-                            expr(
-                                f"transform({array_column}, x -> named_struct({', '.join([f'{f.name}, x.{f.name}' if f.name in df.columns else f'{f.name}, NULL' for f in element_schema.fields])}))")
+                            F.expr(
+                                f"transform({array_column}, x -> named_struct({', '.join([f'{f.name}, x.{f.name}' for f in element_schema.fields if f.name in x.columns])}))")
                         )
                 elif full_column_name not in df.columns:
                     # If a field is missing, add it as null
                     logging.info(f"  - Adding missing field {full_column_name} with type {field.dataType}")
-                    df = df.withColumn(full_column_name, lit(None).cast(field.dataType))
+                    df = df.withColumn(full_column_name, F.lit(None).cast(field.dataType))
 
             return df
 
         # Align DataFrame schema with the table schema
-        df_aligned = align_schema(df, table_schema)
+        df_aligned = align_schema_with_table(df, table_schema)
 
         return df_aligned
 

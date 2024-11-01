@@ -155,9 +155,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Manual adjustments
     # NVD
     if 'nvd' in iceberg_table:
-        logging.info("manual casting of columns")
-        # df = df.withColumn("cveTags", col("cveTags").cast("string"))
-        df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+        logging.info("applying custom rules to df")
+        for col_name in ["cveTags", "configurations", "metrics"]:
+            df = df.withColumn(col_name, from_json(col(col_name).cast("string"), ArrayType(StringType(), True)))
 
     # New table
     logging.info(f"")
@@ -188,8 +188,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         # Log any columnds with changed data types
 
         # Identify columns with changed formats
-        if log_changed_columns(table_fields, dataframe_fields):
-            align_schema(df, table_schema, spark)
+        log_changed_columns(table_fields, dataframe_fields)
+        # align_schema(df, table_schema, spark)
 
         # Append to existing table
         df.writeTo(iceberg_table) \
@@ -217,15 +217,15 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
 def log_new_columns(table_fields, dataframe_fields):
-    logging.debug("Checking for new columns in the dataframe")
+    logging.info("Checking for new columns in the dataframe")
     new_columns_in_dataframe = {name: datatype for name, datatype in dataframe_fields.items() if name not in table_fields}
     if new_columns_in_dataframe:
         for field, data_type in new_columns_in_dataframe.items():
             logging.info(f" - {field}: {data_type}")
-    logging.debug("- done")
+    logging.info("- done")
 
 def add_missing_columns_to_df(table_fields, dataframe_fields, df):
-    logging.debug("Checking for missing columns in the dataframe")
+    logging.info("Checking for missing columns in the dataframe")
 
     missing_columns = set(table_fields) - set(dataframe_fields)
     for column in missing_columns:
@@ -233,11 +233,11 @@ def add_missing_columns_to_df(table_fields, dataframe_fields, df):
         logging.info(f"- {column} {column_type} -> missing in dataframe, added")
         df = df.withColumn(column, lit(None).cast(column_type))  # Updates to a new DataFrame
 
-    logging.debug("- done")
+    logging.info("- done")
     return df
 
 def log_changed_columns(table_fields, dataframe_fields):
-    logging.debug("Checking for changed column data types")
+    logging.info("Checking for changed column data types")
     changed_fields = {}
 
     for field, data_type in dataframe_fields.items():
@@ -253,39 +253,39 @@ def log_changed_columns(table_fields, dataframe_fields):
         return True
 
     else:
-        logging.debug("- done")
+        logging.info("- done")
 
 
-def align_schema(df, table_schema, spark):
-    """
-    Recursively aligns the schema of the DataFrame to match the table schema.
-    """
-    for field in table_schema.fields:
-        if field.name not in df.schema.fieldNames():
-            # If the field is missing, add it as null with the correct data type
-            df = df.withColumn(field.name, lit(None).cast(field.dataType))
-        else:
-            # If the field exists but is nested, check recursively
-            df_field_types = {f.name: f.dataType for f in df.schema.fields}
-            df_field_type = df_field_types.get(field.name)
-
-            # Handle nested StructType recursively
-            if isinstance(field.dataType, StructType) and isinstance(df_field_type, StructType):
-                # Extract nested DataFrame, align schema, then reassemble
-                nested_df = df.selectExpr(f"`{field.name}`.*")
-                aligned_nested_df = align_schema(nested_df, field.dataType, spark)
-                df = df.drop(field.name).withColumn(field.name, aligned_nested_df)
-
-            # Handle arrays of structs by aligning the struct schema within the array
-            elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
-                element_type = field.dataType.elementType
-                # Create an empty DataFrame with the correct schema for the array element struct
-                aligned_element_schema = align_schema(
-                    spark.createDataFrame([], element_type), element_type, spark).schema
-                df = df.withColumn(
-                    field.name,
-                    col(field.name).cast(ArrayType(aligned_element_schema))
-                )
-
-    return df
+# def align_schema(df, table_schema, spark):
+#     """
+#     Recursively aligns the schema of the DataFrame to match the table schema.
+#     """
+#     for field in table_schema.fields:
+#         if field.name not in df.schema.fieldNames():
+#             # If the field is missing, add it as null with the correct data type
+#             df = df.withColumn(field.name, lit(None).cast(field.dataType))
+#         else:
+#             # If the field exists but is nested, check recursively
+#             df_field_types = {f.name: f.dataType for f in df.schema.fields}
+#             df_field_type = df_field_types.get(field.name)
+#
+#             # Handle nested StructType recursively
+#             if isinstance(field.dataType, StructType) and isinstance(df_field_type, StructType):
+#                 # Extract nested DataFrame, align schema, then reassemble
+#                 nested_df = df.selectExpr(f"`{field.name}`.*")
+#                 aligned_nested_df = align_schema(nested_df, field.dataType, spark)
+#                 df = df.drop(field.name).withColumn(field.name, aligned_nested_df)
+#
+#             # Handle arrays of structs by aligning the struct schema within the array
+#             elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
+#                 element_type = field.dataType.elementType
+#                 # Create an empty DataFrame with the correct schema for the array element struct
+#                 aligned_element_schema = align_schema(
+#                     spark.createDataFrame([], element_type), element_type, spark).schema
+#                 df = df.withColumn(
+#                     field.name,
+#                     col(field.name).cast(ArrayType(aligned_element_schema))
+#                 )
+#
+#     return df
 

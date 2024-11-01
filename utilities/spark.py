@@ -212,12 +212,20 @@ def log_schema_changes(spark, iceberg_table, df):
     dataframe_schema = df.schema
     dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
 
-    # Identify new columns
+    # Check Top Level Columns
+    logging.info(f"checking for new columns in the dataframe")
     new_fields = {name: dtype for name, dtype in dataframe_fields.items() if name not in table_fields}
     if new_fields:
-        logging.info("- new columns in DataFrame not in Iceberg table:")
         for field, data_type in new_fields.items():
             logging.info(f" - {field}: {data_type}")
+    logging.info('- done')
+
+    logging.info("checking for missing columns in the dataframe")
+    missing_columns = set(table_fields) - set(dataframe_fields)
+    for column in missing_columns:
+        logging.info(f'- {column}')
+        df = df.withColumn(column, lit(None))  # Adds the missing column with None as default
+    logging.info('- done')
 
     # Identify columns with changed formats
     changed_fields = {}

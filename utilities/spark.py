@@ -266,13 +266,16 @@ def align_schema(df, table_schema: StructType):
             df = df.withColumn(field.name, lit(None).cast(field.dataType))
         else:
             # If the field exists but is nested, check recursively
-            df_field_type = dict(df.schema.fields)[field.name].dataType
+            df_field_types = {field.name: field.dataType for field in df.schema.fields}
+            df_field_type = df_field_types.get(field.name)
+
             if isinstance(field.dataType, StructType) and isinstance(df_field_type, StructType):
                 # Recursively align nested struct fields
                 nested_df = df.select(col(field.name + ".*"))  # Extract nested columns for comparison
                 aligned_nested_df = align_schema(nested_df, field.dataType)
                 # Reassemble the nested structure with aligned schema
                 df = df.drop(field.name).withColumn(field.name, aligned_nested_df)
+
             elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
                 # Handle arrays of structs by aligning the struct within the array
                 element_type = field.dataType.elementType

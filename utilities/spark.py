@@ -6,7 +6,7 @@ import json
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
-from pyspark.sql.functions import lit, to_date, col, from_json, to_json
+from pyspark.sql.functions import lit, to_timestamp, col, from_json, to_json
 from pyspark.sql.types import StringType, ArrayType, StructType
 
 
@@ -148,7 +148,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"Populating column: {cfg_iceberg['partition']['field']} with value: {cfg_iceberg['partition']['value']}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
-        to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
+        to_timestamp(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
     logging.info(f"- populated!")
 

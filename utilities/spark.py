@@ -6,7 +6,7 @@ import json
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.utils import AnalysisException
-from pyspark.sql.functions import lit, to_date, col, from_json, expr
+from pyspark.sql.functions import lit, to_date, col, from_json
 from pyspark.sql.types import StringType, ArrayType, StructType
 
 
@@ -271,23 +271,21 @@ def align_schema(df, table_schema, spark):
 
             # Handle nested StructType recursively
             if isinstance(field.dataType, StructType) and isinstance(df_field_type, StructType):
-                nested_df = df.selectExpr(f"`{field.name}`.*")  # Extract nested columns for comparison
+                # Extract nested DataFrame, align schema, then reassemble
+                nested_df = df.selectExpr(f"`{field.name}`.*")
                 aligned_nested_df = align_schema(nested_df, field.dataType, spark)
-                # Reassemble the nested structure with aligned schema
                 df = df.drop(field.name).withColumn(field.name, aligned_nested_df)
 
             # Handle arrays of structs by aligning the struct schema within the array
             elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
                 element_type = field.dataType.elementType
-                # Create an empty DataFrame to align element schema
+                # Create an empty DataFrame with the correct schema for the array element struct
                 aligned_element_schema = align_schema(
-                    spark.createDataFrame([], element_type),
-                    element_type,
-                    spark
-                ).schema
+                    spark.createDataFrame([], element_type), element_type, spark).schema
                 df = df.withColumn(
                     field.name,
                     col(field.name).cast(ArrayType(aligned_element_schema))
                 )
 
     return df
+

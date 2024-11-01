@@ -153,17 +153,21 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     )
     logging.info(f"- populated!")
 
+    # Manual adjustments
+    # NVD
+    if 'nvd' in iceberg_table:
+        logging.info("manual casting of columns")
+        # df = df.withColumn("cveTags", col("cveTags").cast("string"))
+        df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+        # df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+        # df = df.withColumn("configurations", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+        # df = df.withColumn("metrics", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
+
     # New table
     logging.info(f"")
     logging.info(f"Checking for existing table")
     if not spark.catalog.tableExists(iceberg_table):
         logging.info(f"- no table found! Creating a new Iceberg Table.")
-
-        # NVD
-        if 'nvd' in iceberg_table:
-            logging.info("manual casting of columns")
-            # df = df.withColumn("cveTags", col("cveTags").cast("string"))
-            df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
 
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
@@ -174,16 +178,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Existing Table
     else:
         logging.info(f"- table exists!")
-
-        # NVD
-        if 'nvd' in iceberg_table:
-            logging.info("manual casting of columns")
-            # df = df.withColumn("cveTags", col("cveTags").cast("string"))
-            df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-            # df = df.withColumn("cveTags", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-            # df = df.withColumn("configurations", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-            # df = df.withColumn("metrics", from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-
         log_schema_changes(spark, iceberg_table, df)
         logging.info(f"appending to existing table")
         df.writeTo(iceberg_table) \

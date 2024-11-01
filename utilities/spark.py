@@ -175,8 +175,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Existing Table
     else:
         logging.info(f"- table exists!")
-        log_schema_changes(spark, iceberg_table, df)
-        logging.info(f"- appending to existing table")
+        df = compare_schemas(spark, iceberg_table, df)  # Reassign df to capture any changes
+        logging.info("Appending to existing table with merged schema")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
@@ -201,33 +201,35 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info('Success! Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
-def log_schema_changes(spark, iceberg_table, df):
-    logging.info("")
+def compare_schemas(spark, iceberg_table, df):
     logging.info("Comparing existing table schema to dataframe:")
 
+    # Get Schemas
+    # Table
     table_schema = spark.table(iceberg_table).schema
     table_fields = {field.name: field.dataType for field in table_schema.fields}
-
-    # Get the schema of the DataFrame you're writing
+    # DataFrame
     dataframe_schema = df.schema
     dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
 
-    # Check Top Level Columns
-    logging.info(f"checking for new columns in the dataframe")
+    # Compare Columns
+    # New columns in Dataframe
+    logging.info("Checking for new columns in the dataframe")
     new_columns_in_dataframe = {name: datatype for name, datatype in dataframe_fields.items() if name not in table_fields}
     if new_columns_in_dataframe:
         for field, data_type in new_columns_in_dataframe.items():
             logging.info(f" - {field}: {data_type}")
-    logging.info('- done')
+    logging.info("- done")
 
-    logging.info("checking for missing columns in the dataframe")
+    # Missing columns in Dataframe
+    logging.info("Checking for missing columns in the dataframe")
     missing_columns = set(table_fields) - set(dataframe_fields)
     for column in missing_columns:
         column_type = table_fields[column]
         logging.info(f"Adding missing column: {column} with type {column_type}")
         # Add the missing column with the correct data type
-        df = df.withColumn(column, lit(None).cast(column_type))
-    logging.info('- done')
+        df = df.withColumn(column, lit(None).cast(column_type))  # Updates to a new DataFrame
+    logging.info("- done")
 
     # Identify columns with changed formats
     changed_fields = {}
@@ -245,3 +247,6 @@ def log_schema_changes(spark, iceberg_table, df):
     else:
         logging.info(" - schemas match!")
         logging.info("")
+
+    # Return the modified DataFrame with added columns if any
+    return df

@@ -155,18 +155,29 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"- populated!")
 
     # Manual adjustments
-    custom_ingestor_path = f"../custom_ingestors/{cfg_iceberg['table']['name'] }.py"  # Path to the module file
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
+    custom_ingestor_name = os.path.join(custom_ingestors_dir, f"{cfg_iceberg['table']['name']}.py")
+    logging.info(f"Checking for custom ingestor file for {custom_ingestor_name}")
 
-    if os.path.exists(custom_ingestor_path):
-        module = importlib.import_module(f"custom_ingestors.{cfg_iceberg['table']['name'] }")
-        if hasattr(module, "apply_custom_rules"):
-            df = module.apply_custom_rules(df)
-        else:
-            logging.error(f"'apply_custom_rules' does not exist in {cfg_iceberg['table']['name'] }.")
+    if os.path.exists(custom_ingestor_name):
+        sys.path.insert(0, custom_ingestor_name)
+        try:
+            # Import the module dynamically
+            module = importlib.import_module(custom_ingestor_name)
+            if hasattr(module, "apply_custom_rules"):
+                df = module.apply_custom_rules()
+            else:
+                logging.error(f"The function 'my_function' does not exist in {custom_ingestor_name}.")
+        finally:
+            # Remove the directory from sys.path
+            sys.path.pop(0)
+    else:
+        logging.info(f"The file '{custom_ingestor_name}' does not exist.")
 
-    # New table
     logging.info(f"")
     if not spark.catalog.tableExists(iceberg_table):
+        # New table
         logging.info(f"No table found! Creating a new Iceberg Table.")
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
@@ -174,8 +185,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             .partitionedBy(cfg_iceberg['partition']['field']) \
             .create()
 
-    # Existing Table
     else:
+        # Existing Table
         logging.info("Comparing existing table schema to dataframe")
 
         # Get Schemas
@@ -184,7 +195,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         dataframe_schema = df.schema
         dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
 
-        # Log new columns - (no action needed as )merge-schema option handles this)
+        # Log new columns - no action needed as merge-schema option handles this
         log_new_columns(table_fields, dataframe_fields)
 
         # Add columns that exist in the Table but are missing in the Dataframe

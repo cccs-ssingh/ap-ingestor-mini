@@ -169,6 +169,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             module = importlib.import_module(f"custom_ingestors.{module_name}")
             # Check if the function apply_custom_rules exists in the module
             if hasattr(module, "apply_custom_rules"):
+                logging.info("applying custom rules to df")
                 df = module.apply_custom_rules(df)  # Pass df to the function if needed
             else:
                 logging.error(f"The function 'apply_custom_rules' does not exist in {module_name}.")

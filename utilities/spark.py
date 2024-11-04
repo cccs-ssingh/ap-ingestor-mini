@@ -187,7 +187,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     else:
         # Existing Table
-        logging.info("Comparing existing table schema to dataframe")
+        logging.info("Comparing existing Iceberg Table schema to dataframe")
 
         # Get Schemas
         table_schema = spark.table(iceberg_table).schema
@@ -236,7 +236,7 @@ def log_new_columns(table_fields, dataframe_fields):
     if new_columns_in_dataframe:
         for field, data_type in new_columns_in_dataframe.items():
             logging.info(f" - {field}: {data_type}")
-    logging.info("- done")
+    logging.debug("- done")
 
 def add_missing_columns_to_df(table_fields, dataframe_fields, df):
     logging.info("Checking for missing columns in the dataframe")
@@ -245,7 +245,7 @@ def add_missing_columns_to_df(table_fields, dataframe_fields, df):
         column_type = table_fields[column]
         logging.info(f"- added: {column} {column_type}")
         df = df.withColumn(column, lit(None).cast(column_type))
-    logging.info("- done")
+    logging.debug("- done")
     return df
 
 def log_changed_columns(table_fields, dataframe_fields):
@@ -260,6 +260,6 @@ def log_changed_columns(table_fields, dataframe_fields):
             changes_detected = True
 
     if not changes_detected:
-        logging.info("- No data type changes detected.")
+        logging.debug("- No data type changes detected.")
 
     return changes_detected

@@ -2,6 +2,8 @@ import logging
 import time
 import os
 import json
+import sys
+import importlib
 
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
@@ -153,12 +155,14 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"- populated!")
 
     # Manual adjustments
-    # NVD
-    if 'nvd' in iceberg_table:
-        logging.info("applying custom rules to df")
-        df = df.withColumn(       "cveTags",        from_json(col("cveTags").cast("string"), ArrayType(StringType(), True)))
-        df = df.withColumn("configurations", from_json(col("configurations").cast("string"), ArrayType(StringType(), True)))
-        df = df.withColumn("metrics", to_json(col("metrics")))
+    custom_ingestor_path = f"../custom_ingestors/{cfg_iceberg['table']['name'] }.py"  # Path to the module file
+
+    if os.path.exists(custom_ingestor_path):
+        module = importlib.import_module(f"custom_ingestors.{cfg_iceberg['table']['name'] }")
+        if hasattr(module, "apply_custom_rules"):
+            df = module.apply_custom_rules(df)
+        else:
+            logging.error(f"'apply_custom_rules' does not exist in {cfg_iceberg['table']['name'] }.")
 
     # New table
     logging.info(f"")
@@ -180,13 +184,11 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         dataframe_schema = df.schema
         dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
 
-        # Log new columns - no action needed as merge-schema option handles this
+        # Log new columns - (no action needed as )merge-schema option handles this)
         log_new_columns(table_fields, dataframe_fields)
 
         # Add columns that exist in the Table but are missing in the Dataframe
         df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
-
-        # Log any columnds with changed data types
 
         # Identify columns with changed formats
         log_changed_columns(table_fields, dataframe_fields)
@@ -195,6 +197,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         # Append to existing table
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
+            .option("check-ordering", "false") \
             .tableProperty("location", cfg_iceberg['table']['location']) \
             .partitionedBy(cfg_iceberg['partition']['field']) \
             .append()

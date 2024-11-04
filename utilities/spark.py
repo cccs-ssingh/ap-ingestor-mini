@@ -154,26 +154,26 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     )
     logging.info(f"- populated!")
 
-    # Manual adjustments
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
-    custom_ingestor_name = os.path.join(custom_ingestors_dir, f"{cfg_iceberg['table']['name']}.py")
-    logging.info(f"Checking for custom ingestor file for {custom_ingestor_name}")
-
-    if os.path.exists(custom_ingestor_name):
-        sys.path.insert(0, custom_ingestor_name)
-        try:
-            # Import the module dynamically
-            module = importlib.import_module(custom_ingestor_name)
-            if hasattr(module, "apply_custom_rules"):
-                df = module.apply_custom_rules()
-            else:
-                logging.error(f"The function 'my_function' does not exist in {custom_ingestor_name}.")
-        finally:
-            # Remove the directory from sys.path
-            sys.path.pop(0)
-    else:
-        logging.info(f"The file '{custom_ingestor_name}' does not exist.")
+    # # Manual adjustments
+    # project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    # custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
+    # custom_ingestor_name = os.path.join(custom_ingestors_dir, f"{cfg_iceberg['table']['name']}.py")
+    # logging.info(f"Checking for custom ingestor file for {custom_ingestor_name}")
+    #
+    # if os.path.exists(custom_ingestor_name):
+    #     sys.path.insert(0, custom_ingestor_name)
+    #     try:
+    #         # Import the module dynamically
+    #         module = importlib.import_module(custom_ingestor_name)
+    #         if hasattr(module, "apply_custom_rules"):
+    #             df = module.apply_custom_rules()
+    #         else:
+    #             logging.error(f"The function 'my_function' does not exist in {custom_ingestor_name}.")
+    #     finally:
+    #         # Remove the directory from sys.path
+    #         sys.path.pop(0)
+    # else:
+    #     logging.info(f"The file '{custom_ingestor_name}' does not exist.")
 
     logging.info(f"")
     if not spark.catalog.tableExists(iceberg_table):
@@ -209,6 +209,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
             .option("check-ordering", "false") \
+            .overwriteSchema() \
             .tableProperty("location", cfg_iceberg['table']['location']) \
             .partitionedBy(cfg_iceberg['partition']['field']) \
             .append()

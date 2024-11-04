@@ -147,33 +147,36 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Populate timeperiod column for partitioning
     logging.info(f"")
-    logging.info(f"Populating column: {cfg_iceberg['partition']['field']} with value: {cfg_iceberg['partition']['value']}")
+    logging.info(f"Populating column:value {cfg_iceberg['partition']['field']}:{cfg_iceberg['partition']['value']}")
     df = df.withColumn(
         cfg_iceberg['partition']['field'],
         to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
     logging.info(f"- populated!")
 
-    # # Manual adjustments
-    # project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    # custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
-    # custom_ingestor_name = os.path.join(custom_ingestors_dir, f"{cfg_iceberg['table']['name']}.py")
-    # logging.info(f"Checking for custom ingestor file for {custom_ingestor_name}")
-    #
-    # if os.path.exists(custom_ingestor_name):
-    #     sys.path.insert(0, custom_ingestor_name)
-    #     try:
-    #         # Import the module dynamically
-    #         module = importlib.import_module(custom_ingestor_name)
-    #         if hasattr(module, "apply_custom_rules"):
-    #             df = module.apply_custom_rules()
-    #         else:
-    #             logging.error(f"The function 'my_function' does not exist in {custom_ingestor_name}.")
-    #     finally:
-    #         # Remove the directory from sys.path
-    #         sys.path.pop(0)
-    # else:
-    #     logging.info(f"The file '{custom_ingestor_name}' does not exist.")
+    # Manual adjustments
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
+    module_name = cfg_iceberg['table']['name']  # Name without the .py extension
+    logging.info(f"Checking for custom ingestor file {module_name}.py in {custom_ingestors_dir}")
+
+    # Construct the full file path and check if it exists
+    custom_ingestor_path = os.path.join(custom_ingestors_dir, f"{module_name}.py")
+    if os.path.exists(custom_ingestor_path):
+        # Add the custom_ingestors directory to sys.path, not the full file path
+        sys.path.insert(0, custom_ingestors_dir)
+        try:
+            module = importlib.import_module(f"custom_ingestors.{module_name}")
+            # Check if the function apply_custom_rules exists in the module
+            if hasattr(module, "apply_custom_rules"):
+                df = module.apply_custom_rules(df)  # Pass df to the function if needed
+            else:
+                logging.error(f"The function 'apply_custom_rules' does not exist in {module_name}.")
+        finally:
+            # Clean up sys.path by removing the added directory
+            sys.path.pop(0)
+    else:
+        logging.info(f"The file '{custom_ingestor_path}' does not exist.")
 
     logging.info(f"")
     if not spark.catalog.tableExists(iceberg_table):

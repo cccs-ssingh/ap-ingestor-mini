@@ -44,14 +44,15 @@ def create_spark_session(spark_cfg, app_name):
         # cmd-line specified config
         spark_builder = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
-            .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
-            .config(             "spark.executor.cores", spark_cfg['executor']["cores"]) \
-            .config(            "spark.executor.memory", spark_cfg['executor']["memory"]) \
-            .config(         "spark.executor.instances", spark_cfg['executor']["instances"]) \
-            .config(              "spark.driver.memory", spark_cfg['driver']["memory"]) \
-            .config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"]) \
-            .config(              "spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0") \
-            .config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"]) \
+            .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077")
+
+        spark_builder.config("spark.executor.cores", spark_cfg['executor']["cores"])
+        spark_builder.config("spark.executor.memory", spark_cfg['executor']["memory"])
+        spark_builder.config("spark.executor.instances", spark_cfg['executor']["instances"])
+        spark_builder.config("spark.driver.memory", spark_cfg['driver']["memory"])
+        spark_builder.config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"])
+        spark_builder.config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0")
+        spark_builder.config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"])
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)

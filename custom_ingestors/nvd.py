@@ -7,6 +7,6 @@ def apply_custom_rules(df):
     # df = df.withColumn("configurations", from_json(col("configurations").cast("string"), ArrayType(StringType(), True)))
     # df = df.withColumn("metrics", to_json(col("metrics")))
     for column_name in ['configurations', 'cveTags', 'metrics']:
-        logging.info('- formatting column: {} -> String/JSON')
+        logging.info(f'- formatting column: {column_name} -> String/JSON')
         df = df.withColumn(column_name, to_json(col(column_name)))
     return df

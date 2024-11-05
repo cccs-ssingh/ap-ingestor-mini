@@ -162,7 +162,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         # Append to existing Iceberg Table
         merge_into_existing_table(
             spark, df, iceberg_table,
-            cfg_iceberg['table']['location'],
             cfg_iceberg['partition']['field']
         )
 
@@ -214,7 +213,7 @@ def apply_custom_ingestor_rules(df, module_name):
 
 def populate_timeperiod_partition_column(df, partition_field, partition_value, partition_format):
     logging.info(f"")
-    logging.info(f"Populating partition column:value")
+    logging.info(f"Populating partition column -> value")
     logging.info(f"- {partition_field} -> {partition_value}")
     df = df.withColumn(partition_field, to_date(lit(partition_value), partition_format))
     logging.info(f"- populated")
@@ -251,7 +250,7 @@ def add_missing_columns_to_df(table_fields, dataframe_fields, df):
             df = df.withColumn(column, lit(None).cast(column_type))
             logging.info(f"- added: {column} -> {column_type}")
     else:
-        logging.info("- done")
+        logging.info("- no columns missing")
     return df
 
 def log_changed_columns(table_fields, dataframe_fields):
@@ -295,7 +294,7 @@ def order_columns(table_fields, dataframe_fields):
     ordered_columns = ordered_columns + additional_columns
     return ordered_columns
 
-def merge_into_existing_table(spark, df, iceberg_table, table_location, partition_field):
+def merge_into_existing_table(spark, df, iceberg_table, partition_field):
     # Schemas
     table_schema = spark.table(iceberg_table).schema
     table_fields = {field.name: field.dataType for field in table_schema.fields}
@@ -323,5 +322,4 @@ def merge_into_existing_table(spark, df, iceberg_table, table_location, partitio
         .option("check-ordering", "false") \
         .partitionedBy(partition_field) \
         .append()
-    #         .tableProperty("location", table_location) \
     logging.info('- appended!')

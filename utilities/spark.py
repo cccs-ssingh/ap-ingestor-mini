@@ -146,10 +146,10 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
-    populate_timeperiod_partition_column(df, cfg_iceberg)
+    df = populate_timeperiod_partition_column(df, cfg_iceberg)
 
     # Manual adjustments
-    apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
+    df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
     # Brand-new iceberg table
     if not spark.catalog.tableExists(iceberg_table):
@@ -196,6 +196,7 @@ def apply_custom_ingestor_rules(df, module_name):
             if hasattr(module, "apply_custom_rules"):
                 logging.info("- applying custom rules to df")
                 df = module.apply_custom_rules(df)  # Pass df to the function if needed
+                return df
             else:
                 logging.error(f"The function 'apply_custom_rules' does not exist in {module_name}.")
         finally:
@@ -204,7 +205,7 @@ def apply_custom_ingestor_rules(df, module_name):
     else:
         logging.info(f"- none found")
 
-def populate_timeperiod_partition_column(cfg_iceberg, df):
+def populate_timeperiod_partition_column(df, cfg_iceberg):
     logging.info(f"")
     logging.info(f"Populating column:value {cfg_iceberg['partition']['field']}:{cfg_iceberg['partition']['value']}")
     df = df.withColumn(
@@ -212,6 +213,7 @@ def populate_timeperiod_partition_column(cfg_iceberg, df):
         to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
     )
     logging.info(f"- populated!")
+    return df
 
 def create_new_iceberg_table(df, iceberg_table, cfg_iceberg):
     logging.info(f"")

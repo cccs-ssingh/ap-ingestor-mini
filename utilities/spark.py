@@ -283,9 +283,8 @@ def order_columns(table_fields, dataframe_fields):
     """
     logging.info("")
     logging.info("Ordering columns to match table")
-
-    logging.info(f"- table columns order: {[col for col in table_fields]}")
-    logging.info(f"-    df columns order: {[col for col in dataframe_fields]}")
+    logging.info(f"- old df columns order: {[col for col in dataframe_fields]}")
+    logging.info(f"-  table columns order: {[col for col in table_fields]}")
 
     # List of ordered columns based on the table schema
     ordered_columns = [col for col in table_fields if col in dataframe_fields]
@@ -295,15 +294,14 @@ def order_columns(table_fields, dataframe_fields):
 
     # Combine ordered and additional columns
     ordered_columns = ordered_columns + additional_columns
-    logging.info(f"- re-ordered df cols : {ordered_columns}")
+    logging.info(f"- new df columns order: {ordered_columns}")
     return ordered_columns
 
 def merge_into_existing_table(spark, df, iceberg_table, partition_field):
     # Schemas
     table_schema = spark.table(iceberg_table).schema
-    table_fields = {field.name: field.dataType for field in table_schema.fields}
-    dataframe_schema = df.schema
-    dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
+    table_fields =     {field.name: field.dataType for field in table_schema.fields}
+    dataframe_fields = {field.name: field.dataType for field in df.schema.fields}
 
     # Log new columns - no action needed as merge-schema option handles this
     log_new_columns(table_fields, dataframe_fields)
@@ -317,7 +315,7 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field):
     # Order columns to match table (new ones at the end)
     ordered_columns = order_columns(table_fields, dataframe_fields)
     df = df.select(*ordered_columns)
-    logging.info(f"DataFrame schema after ordering and selecting columns: {df.schema}")
+    logging.info(f"- df.sel columns order: {df.columns}")
 
     # Append to existing table
     logging.info('')

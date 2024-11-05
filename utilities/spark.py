@@ -151,13 +151,13 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Manual adjustments
     apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
-    # Brand new iceberg table
+    # Brand-new iceberg table
     if not spark.catalog.tableExists(iceberg_table):
         create_new_iceberg_table(df, iceberg_table, cfg_iceberg)
 
     # Append to existing Iceberg Table
     else:
-        merge_into_existing_table()
+        merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg)
 
     # # Calculate time taken
     # time_taken = time.time() - start_time
@@ -294,14 +294,12 @@ def merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg):
     # Add columns that exist in the Table but are missing in the Dataframe
     df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
 
+    # Order columns to match table (new ones at the end)
     ordered_columns = order_columns(table_fields, dataframe_fields)
     df = df.select(*ordered_columns)
 
     # Identify columns with changed formats
     log_changed_columns(table_fields, dataframe_fields)
-
-    # Order columns
-    order_columns(table_fields, dataframe_fields)
 
     # Append to existing table
     df.writeTo(iceberg_table) \

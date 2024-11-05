@@ -320,8 +320,8 @@ def merge_into_existing_table(spark, df, iceberg_table, table_location, partitio
     logging.info('Appending to existing table')
     df.writeTo(iceberg_table) \
         .option("merge-schema", "true") \
-        .tableProperty("location", table_location) \
+        .option("check-ordering", "false") \
         .partitionedBy(partition_field) \
         .append()
+    #         .tableProperty("location", table_location) \
     logging.info('- appended!')
-    # .option("check-ordering", "True") \

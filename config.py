@@ -52,7 +52,7 @@ def parse_cmd_line_args(args, kwargs):
 # Azure Connection string from env var
 def extract_conn_str_from_env_vars():
     for key, value in os.environ.items():
-        logging.info(f"{key}:{value}")
+        # logging.info(f"{key}:{value}")
         if key.endswith('CONN_STR'):
             return value
 

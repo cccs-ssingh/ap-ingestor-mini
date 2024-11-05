@@ -1,0 +1,40 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - '*'
+
+
+pool: 'cybertron-build-pool'
+variables:
+  buildId: '$(Build.BuildId)'
+  buildTimestamp: $[format('{0:yyyyMMddHHmmss}', pipeline.startTime)]
+resources:
+  pipelines:
+    - pipeline: base
+      source: spark-containers.kubernetes
+      project: spark
+      trigger:
+        enabled: true
+        branches:
+          include:
+            - main
+
+steps:
+  - task: Docker@2
+    displayName: Login to uchimera
+    inputs:
+      command: login
+      containerRegistry: uchimera
+  - task: Docker@2
+    inputs:
+      command: 'buildAndPush'
+      Dockerfile: './Dockerfile'
+      containerRegistry: uchimera
+      repository: cccs/ap/ingestion/datafeeds-mini
+      tags: |
+        $(buildId)
+        $(buildTimestamp)
+        $(Build.SourceBranchName)
+        $(Build.SourceBranchName)_$(buildTimestamp)
+    displayName: "build and push image"

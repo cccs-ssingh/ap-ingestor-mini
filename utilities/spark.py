@@ -105,7 +105,7 @@ def read_data(spark, file_cfg, input_files):
 
     elif file_cfg['type'] == "json":
         if file_cfg['json_multiline']:
-            logging.info(f"   - json_multiline: {file_cfg['json_multiline']}")
+            logging.info(f"- json_multiline: {file_cfg['json_multiline']}")
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
             df = spark.read.json(input_files)
@@ -115,7 +115,7 @@ def read_data(spark, file_cfg, input_files):
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
-        logging.info(f" - xml_row_tag: {file_cfg['xml_row_tag']}")
+        logging.info(f"- xml_row_tag: {file_cfg['xml_row_tag']}")
         df = (
             spark.read.format("xml")
             .option("rowTag", file_cfg["xml_row_tag"])
@@ -159,6 +159,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
     module_name = cfg_iceberg['table']['name']  # Name without the .py extension
+    logging.info(f"")
     logging.info(f"Checking for custom ingestor file {module_name}.py in {custom_ingestors_dir}")
 
     # Construct the full file path and check if it exists
@@ -170,7 +171,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             module = importlib.import_module(f"custom_ingestors.{module_name}")
             # Check if the function apply_custom_rules exists in the module
             if hasattr(module, "apply_custom_rules"):
-                logging.info("applying custom rules to df")
+                logging.info("- applying custom rules to df")
                 df = module.apply_custom_rules(df)  # Pass df to the function if needed
             else:
                 logging.error(f"The function 'apply_custom_rules' does not exist in {module_name}.")
@@ -209,6 +210,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         # Identify columns with changed formats
         log_changed_columns(table_fields, dataframe_fields)
 
+        # Order columns
+        order_columns(table_fields, dataframe_fields)
+
         # Append to existing table
         df.writeTo(iceberg_table) \
             .option("merge-schema", "true") \
@@ -241,7 +245,7 @@ def log_new_columns(table_fields, dataframe_fields):
     if new_columns_in_dataframe:
         for field, data_type in new_columns_in_dataframe.items():
             logging.info(f" - {field}: {data_type}")
-    logging.debug("- done")
+    logging.info("- done")
 
 def add_missing_columns_to_df(table_fields, dataframe_fields, df):
     logging.info("Checking for missing columns in the dataframe")
@@ -250,7 +254,7 @@ def add_missing_columns_to_df(table_fields, dataframe_fields, df):
         column_type = table_fields[column]
         logging.info(f"- added: {column} {column_type}")
         df = df.withColumn(column, lit(None).cast(column_type))
-    logging.debug("- done")
+    logging.info("- done")
     return df
 
 def log_changed_columns(table_fields, dataframe_fields):
@@ -264,7 +268,26 @@ def log_changed_columns(table_fields, dataframe_fields):
             logging.info(f"   - DataFrame type = {data_type}")
             changes_detected = True
 
-    if not changes_detected:
-        logging.debug("- No data type changes detected.")
-
+    logging.info("- done")
     return changes_detected
+
+def order_columns(table_fields, dataframe_fields):
+    """
+    Orders the columns in `dataframe_fields` to match the order of `table_fields`.
+    Any columns present in `dataframe_fields` but not in `table_fields` are appended at the end.
+
+    Parameters:
+        table_fields (dict): Dictionary of table columns with column names as keys and data types as values.
+        dataframe_fields (dict): Dictionary of DataFrame columns with column names as keys and data types as values.
+
+    Returns:
+        list: Ordered list of column names for the DataFrame.
+    """
+    # List of ordered columns based on the table schema
+    ordered_columns = [col for col in table_fields if col in dataframe_fields]
+
+    # Additional columns that are in the DataFrame but not in the table schema
+    additional_columns = [col for col in dataframe_fields if col not in table_fields]
+
+    # Combine ordered and additional columns
+    return ordered_columns + additional_columns

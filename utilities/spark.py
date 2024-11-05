@@ -284,8 +284,8 @@ def order_columns(table_fields, dataframe_fields):
     logging.info("")
     logging.info("Ordering columns to match table")
 
-    logging.info(f"- table columns order: {table_fields}")
-    logging.info(f"-    df columns order: {dataframe_fields}")
+    logging.info(f"- table columns order: {[col for col in table_fields]}")
+    logging.info(f"-    df columns order: {[col for col in dataframe_fields]}")
 
     # List of ordered columns based on the table schema
     ordered_columns = [col for col in table_fields if col in dataframe_fields]
@@ -295,7 +295,7 @@ def order_columns(table_fields, dataframe_fields):
 
     # Combine ordered and additional columns
     ordered_columns = ordered_columns + additional_columns
-    logging.info(f"- re-ordered columns for DataFrame: {ordered_columns}")
+    logging.info(f"- re-ordered df cols : {ordered_columns}")
     return ordered_columns
 
 def merge_into_existing_table(spark, df, iceberg_table, partition_field):

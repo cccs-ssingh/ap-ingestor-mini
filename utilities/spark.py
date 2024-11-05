@@ -151,12 +151,13 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Manual adjustments
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
-    # Brand-new iceberg table
+    # Write the dataframe
     if not spark.catalog.tableExists(iceberg_table):
+        # Brand-new iceberg table
         create_new_iceberg_table(df, iceberg_table, cfg_iceberg)
 
-    # Append to existing Iceberg Table
     else:
+        # Append to existing Iceberg Table
         merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg)
 
     # # Calculate time taken
@@ -173,18 +174,18 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Log metrics
     logging.info('')
-    logging.info('Success!')
     # logging.info('Success! Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
 def apply_custom_ingestor_rules(df, module_name):
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
     logging.info(f"")
     logging.info(f"Checking for custom ingestor file")
 
     # Construct the full file path and check if it exists
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
     custom_ingestor_path = os.path.join(custom_ingestors_dir, f"{module_name}.py")
+
     if os.path.exists(custom_ingestor_path):
         logging.info(f"- custom ingestor exits: '{custom_ingestor_path}'")
 
@@ -237,11 +238,13 @@ def log_new_columns(table_fields, dataframe_fields):
 def add_missing_columns_to_df(table_fields, dataframe_fields, df):
     logging.info("")
     logging.info("Checking for missing columns in the dataframe")
+
     missing_columns = set(table_fields) - set(dataframe_fields)
     for column in missing_columns:
         column_type = table_fields[column]
         logging.info(f"- added: {column} {column_type}")
         df = df.withColumn(column, lit(None).cast(column_type))
+
     logging.info("- done")
     return df
 
@@ -272,6 +275,8 @@ def order_columns(table_fields, dataframe_fields):
     Returns:
         list: Ordered list of column names for the DataFrame.
     """
+    logging.info("")
+    logging.info("Ordering columns to match table")
     # List of ordered columns based on the table schema
     ordered_columns = [col for col in table_fields if col in dataframe_fields]
 
@@ -279,12 +284,13 @@ def order_columns(table_fields, dataframe_fields):
     additional_columns = [col for col in dataframe_fields if col not in table_fields]
 
     # Combine ordered and additional columns
+    logging.info("- ordered")
     return ordered_columns + additional_columns
 
 def merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg):
     logging.info("Comparing existing Iceberg Table schema to dataframe")
 
-    # Get Schemas
+    # Schemas
     table_schema = spark.table(iceberg_table).schema
     table_fields = {field.name: field.dataType for field in table_schema.fields}
     dataframe_schema = df.schema
@@ -296,17 +302,19 @@ def merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg):
     # Add columns that exist in the Table but are missing in the Dataframe
     df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
 
+    # Identify columns with changed formats
+    log_changed_columns(table_fields, dataframe_fields)
+
     # Order columns to match table (new ones at the end)
     ordered_columns = order_columns(table_fields, dataframe_fields)
     df = df.select(*ordered_columns)
 
-    # Identify columns with changed formats
-    log_changed_columns(table_fields, dataframe_fields)
-
     # Append to existing table
+    logging.info('- appending to existing table')
     df.writeTo(iceberg_table) \
         .option("merge-schema", "true") \
         .option("check-ordering", "false") \
         .tableProperty("location", cfg_iceberg['table']['location']) \
         .partitionedBy(cfg_iceberg['partition']['field']) \
         .append()
+    logging.info('- success!')

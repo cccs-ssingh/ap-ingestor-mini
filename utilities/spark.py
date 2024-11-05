@@ -160,7 +160,11 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     else:
         # Append to existing Iceberg Table
-        merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg['table']['location'], cfg_iceberg['partition']['field'])
+        merge_into_existing_table(
+            spark, df, iceberg_table,
+            cfg_iceberg['table']['location'],
+            cfg_iceberg['partition']['field']
+        )
 
     # # Calculate time taken
     # time_taken = time.time() - start_time
@@ -197,7 +201,7 @@ def apply_custom_ingestor_rules(df, module_name):
             module = importlib.import_module(f"custom_ingestors.{module_name}")
             # Check if the function apply_custom_rules exists in the module
             if hasattr(module, "apply_custom_rules"):
-                logging.info("- applying custom rules to df")
+                logging.info(" - applying custom rules to df")
                 df = module.apply_custom_rules(df)  # Pass df to the function if needed
                 return df
             else:
@@ -316,8 +320,8 @@ def merge_into_existing_table(spark, df, iceberg_table, table_location, partitio
     logging.info('Appending to existing table')
     df.writeTo(iceberg_table) \
         .option("merge-schema", "true") \
-        .option("check-ordering", "True") \
         .tableProperty("location", table_location) \
         .partitionedBy(partition_field) \
         .append()
     logging.info('- appended!')
+    # .option("check-ordering", "True") \

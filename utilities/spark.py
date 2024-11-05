@@ -207,6 +207,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         # Add columns that exist in the Table but are missing in the Dataframe
         df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
 
+        ordered_columns = order_columns(table_fields, dataframe_fields)
+        df = df.select(*ordered_columns)
+
         # Identify columns with changed formats
         log_changed_columns(table_fields, dataframe_fields)
 
@@ -240,6 +243,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
 def log_new_columns(table_fields, dataframe_fields):
+    logging.info("")
     logging.info("Checking for new columns in the dataframe")
     new_columns_in_dataframe = {name: datatype for name, datatype in dataframe_fields.items() if name not in table_fields}
     if new_columns_in_dataframe:
@@ -248,6 +252,7 @@ def log_new_columns(table_fields, dataframe_fields):
     logging.info("- done")
 
 def add_missing_columns_to_df(table_fields, dataframe_fields, df):
+    logging.info("")
     logging.info("Checking for missing columns in the dataframe")
     missing_columns = set(table_fields) - set(dataframe_fields)
     for column in missing_columns:
@@ -258,6 +263,7 @@ def add_missing_columns_to_df(table_fields, dataframe_fields, df):
     return df
 
 def log_changed_columns(table_fields, dataframe_fields):
+    logging.info("")
     logging.info("Checking for changed column data types")
     changes_detected = False
 

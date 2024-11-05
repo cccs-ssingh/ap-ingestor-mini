@@ -12,7 +12,6 @@ from pyspark.sql.functions import lit, to_date, to_timestamp, col, from_json, to
 from pyspark.sql.types import StringType, ArrayType, StructType
 
 
-
 def format_size(bytes_size):
     """
     Convert bytes to a human-readable format (KB, MB, GB, etc.).
@@ -147,82 +146,18 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
-    logging.info(f"")
-    logging.info(f"Populating column:value {cfg_iceberg['partition']['field']}:{cfg_iceberg['partition']['value']}")
-    df = df.withColumn(
-        cfg_iceberg['partition']['field'],
-        to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
-    )
-    logging.info(f"- populated!")
+    populate_timeperiod_partition_column(df, cfg_iceberg)
 
     # Manual adjustments
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
-    module_name = cfg_iceberg['table']['name']  # Name without the .py extension
-    logging.info(f"")
-    logging.info(f"Checking for custom ingestor file {module_name}.py in {custom_ingestors_dir}")
+    apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
-    # Construct the full file path and check if it exists
-    custom_ingestor_path = os.path.join(custom_ingestors_dir, f"{module_name}.py")
-    if os.path.exists(custom_ingestor_path):
-        # Add the custom_ingestors directory to sys.path, not the full file path
-        sys.path.insert(0, custom_ingestors_dir)
-        try:
-            module = importlib.import_module(f"custom_ingestors.{module_name}")
-            # Check if the function apply_custom_rules exists in the module
-            if hasattr(module, "apply_custom_rules"):
-                logging.info("- applying custom rules to df")
-                df = module.apply_custom_rules(df)  # Pass df to the function if needed
-            else:
-                logging.error(f"The function 'apply_custom_rules' does not exist in {module_name}.")
-        finally:
-            # Clean up sys.path by removing the added directory
-            sys.path.pop(0)
-    else:
-        logging.info(f"The file '{custom_ingestor_path}' does not exist.")
-
-    logging.info(f"")
+    # Brand new iceberg table
     if not spark.catalog.tableExists(iceberg_table):
-        # New table
-        logging.info(f"No table found! Creating a new Iceberg Table.")
-        df.writeTo(iceberg_table) \
-            .option("merge-schema", "true") \
-            .tableProperty("location", cfg_iceberg['table']['location']) \
-            .partitionedBy(cfg_iceberg['partition']['field']) \
-            .create()
+        create_new_iceberg_table(df, iceberg_table, cfg_iceberg)
 
+    # Append to existing Iceberg Table
     else:
-        # Existing Table
-        logging.info("Comparing existing Iceberg Table schema to dataframe")
-
-        # Get Schemas
-        table_schema = spark.table(iceberg_table).schema
-        table_fields = {field.name: field.dataType for field in table_schema.fields}
-        dataframe_schema = df.schema
-        dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
-
-        # Log new columns - no action needed as merge-schema option handles this
-        log_new_columns(table_fields, dataframe_fields)
-
-        # Add columns that exist in the Table but are missing in the Dataframe
-        df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
-
-        ordered_columns = order_columns(table_fields, dataframe_fields)
-        df = df.select(*ordered_columns)
-
-        # Identify columns with changed formats
-        log_changed_columns(table_fields, dataframe_fields)
-
-        # Order columns
-        order_columns(table_fields, dataframe_fields)
-
-        # Append to existing table
-        df.writeTo(iceberg_table) \
-            .option("merge-schema", "true") \
-            .option("check-ordering", "false") \
-            .tableProperty("location", cfg_iceberg['table']['location']) \
-            .partitionedBy(cfg_iceberg['partition']['field']) \
-            .append()
+        merge_into_existing_table()
 
     # # Calculate time taken
     # time_taken = time.time() - start_time
@@ -241,6 +176,52 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('Success!')
     # logging.info('Success! Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
+
+def apply_custom_ingestor_rules(df, module_name):
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
+    logging.info(f"")
+    logging.info(f"Checking for custom ingestor file")
+
+    # Construct the full file path and check if it exists
+    custom_ingestor_path = os.path.join(custom_ingestors_dir, f"{module_name}.py")
+    if os.path.exists(custom_ingestor_path):
+        logging.info(f"- custom ingestor exits: '{custom_ingestor_path}'")
+
+        # Add the custom_ingestors directory to sys.path, not the full file path
+        sys.path.insert(0, custom_ingestors_dir)
+        try:
+            module = importlib.import_module(f"custom_ingestors.{module_name}")
+            # Check if the function apply_custom_rules exists in the module
+            if hasattr(module, "apply_custom_rules"):
+                logging.info("- applying custom rules to df")
+                df = module.apply_custom_rules(df)  # Pass df to the function if needed
+            else:
+                logging.error(f"The function 'apply_custom_rules' does not exist in {module_name}.")
+        finally:
+            # Clean up sys.path by removing the added directory
+            sys.path.pop(0)
+    else:
+        logging.info(f"- none found")
+
+def populate_timeperiod_partition_column(cfg_iceberg, df):
+    logging.info(f"")
+    logging.info(f"Populating column:value {cfg_iceberg['partition']['field']}:{cfg_iceberg['partition']['value']}")
+    df = df.withColumn(
+        cfg_iceberg['partition']['field'],
+        to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
+    )
+    logging.info(f"- populated!")
+
+def create_new_iceberg_table(df, iceberg_table, cfg_iceberg):
+    logging.info(f"")
+    logging.info(f"No existing table found! Creating a new Iceberg Table.")
+    logging.info(f"- creating a new Iceberg Table.")
+    df.writeTo(iceberg_table) \
+        .tableProperty("location", cfg_iceberg['table']['location']) \
+        .partitionedBy(cfg_iceberg['partition']['field']) \
+        .create()
+    # .option("merge-schema", "true") \
 
 def log_new_columns(table_fields, dataframe_fields):
     logging.info("")
@@ -297,3 +278,35 @@ def order_columns(table_fields, dataframe_fields):
 
     # Combine ordered and additional columns
     return ordered_columns + additional_columns
+
+def merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg):
+    logging.info("Comparing existing Iceberg Table schema to dataframe")
+
+    # Get Schemas
+    table_schema = spark.table(iceberg_table).schema
+    table_fields = {field.name: field.dataType for field in table_schema.fields}
+    dataframe_schema = df.schema
+    dataframe_fields = {field.name: field.dataType for field in dataframe_schema.fields}
+
+    # Log new columns - no action needed as merge-schema option handles this
+    log_new_columns(table_fields, dataframe_fields)
+
+    # Add columns that exist in the Table but are missing in the Dataframe
+    df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
+
+    ordered_columns = order_columns(table_fields, dataframe_fields)
+    df = df.select(*ordered_columns)
+
+    # Identify columns with changed formats
+    log_changed_columns(table_fields, dataframe_fields)
+
+    # Order columns
+    order_columns(table_fields, dataframe_fields)
+
+    # Append to existing table
+    df.writeTo(iceberg_table) \
+        .option("merge-schema", "true") \
+        .option("check-ordering", "false") \
+        .tableProperty("location", cfg_iceberg['table']['location']) \
+        .partitionedBy(cfg_iceberg['partition']['field']) \
+        .append()

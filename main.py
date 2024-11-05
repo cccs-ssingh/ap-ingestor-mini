@@ -16,7 +16,8 @@ def run(*args, **kwargs):
     # Determine files tp process from Azure
     files_to_process = determine_files_to_process(cfg['azure'], cfg['file']['type'])
     if not files_to_process:
-        logging.error("No files found in the specified directory.")
+        logging.warning("No files found in the specified directory.")
+        logging.warning("")
         raise SystemExit(99)
 
     # Ingest files into Iceberg table

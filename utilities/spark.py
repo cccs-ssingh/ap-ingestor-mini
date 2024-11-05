@@ -130,13 +130,9 @@ def read_data(spark, file_cfg, input_files):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info("")
-    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
     # Get the snapshot before the write
     # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
-
-    # Write the dataframe
-    # logging.info(f"Reading data from: {cfg_iceberg['table']['location']}")
 
     # Start timing
     start_time = time.time()
@@ -146,19 +142,25 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = read_data(spark, cfg_file, files_to_process)
 
     # Populate timeperiod column for partitioning
-    df = populate_timeperiod_partition_column(df, cfg_iceberg)
+    df = populate_timeperiod_partition_column(
+        df,
+        cfg_iceberg['partition']['field'],
+        cfg_iceberg['partition']['value'],
+        cfg_iceberg['partition']['format']
+    )
 
     # Manual adjustments
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
     # Write the dataframe
+    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
     if not spark.catalog.tableExists(iceberg_table):
         # Brand-new iceberg table
-        create_new_iceberg_table(df, iceberg_table, cfg_iceberg)
+        create_new_iceberg_table(df, iceberg_table, cfg_iceberg['table']['location'], cfg_iceberg['partition']['field'])
 
     else:
         # Append to existing Iceberg Table
-        merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg)
+        merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg['table']['location'], cfg_iceberg['partition']['field'])
 
     # # Calculate time taken
     # time_taken = time.time() - start_time
@@ -174,7 +176,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Log metrics
     logging.info('')
-    # logging.info('Success! Metrics:')
+    logging.info('Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
 def apply_custom_ingestor_rules(df, module_name):
@@ -206,25 +208,23 @@ def apply_custom_ingestor_rules(df, module_name):
     else:
         logging.info(f"- none found")
 
-def populate_timeperiod_partition_column(df, cfg_iceberg):
+def populate_timeperiod_partition_column(df, partition_field, partition_value, partition_format):
     logging.info(f"")
-    logging.info(f"Populating column:value {cfg_iceberg['partition']['field']}:{cfg_iceberg['partition']['value']}")
-    df = df.withColumn(
-        cfg_iceberg['partition']['field'],
-        to_date(lit(cfg_iceberg['partition']['value']), cfg_iceberg['partition']['format'])
-    )
-    logging.info(f"- populated!")
+    logging.info(f"Populating partition column:value")
+    logging.info(f"- {partition_field} -> {partition_value}")
+    df = df.withColumn(partition_field, to_date(lit(partition_value), partition_format))
+    logging.info(f"- populated")
     return df
 
-def create_new_iceberg_table(df, iceberg_table, cfg_iceberg):
+def create_new_iceberg_table(df, iceberg_table, table_location, partition_field):
     logging.info(f"")
-    logging.info(f"No existing table found! Creating a new Iceberg Table.")
+    logging.info(f"No existing table found!")
     logging.info(f"- creating a new Iceberg Table.")
     df.writeTo(iceberg_table) \
-        .tableProperty("location", cfg_iceberg['table']['location']) \
-        .partitionedBy(cfg_iceberg['partition']['field']) \
+        .tableProperty("location", table_location) \
+        .partitionedBy(partition_field) \
         .create()
-    # .option("merge-schema", "true") \
+    logging.info(f"- created: {iceberg_table}")
 
 def log_new_columns(table_fields, dataframe_fields):
     logging.info("")
@@ -233,19 +233,21 @@ def log_new_columns(table_fields, dataframe_fields):
     if new_columns_in_dataframe:
         for field, data_type in new_columns_in_dataframe.items():
             logging.info(f" - {field}: {data_type}")
-    logging.info("- done")
+    else:
+        logging.info("- no new columns")
 
 def add_missing_columns_to_df(table_fields, dataframe_fields, df):
     logging.info("")
     logging.info("Checking for missing columns in the dataframe")
 
     missing_columns = set(table_fields) - set(dataframe_fields)
-    for column in missing_columns:
-        column_type = table_fields[column]
-        logging.info(f"- added: {column} {column_type}")
-        df = df.withColumn(column, lit(None).cast(column_type))
-
-    logging.info("- done")
+    if missing_columns:
+        for column in missing_columns:
+            column_type = table_fields[column]
+            df = df.withColumn(column, lit(None).cast(column_type))
+            logging.info(f"- added: {column} -> {column_type}")
+    else:
+        logging.info("- done")
     return df
 
 def log_changed_columns(table_fields, dataframe_fields):
@@ -260,7 +262,8 @@ def log_changed_columns(table_fields, dataframe_fields):
             logging.info(f"   - DataFrame type = {data_type}")
             changes_detected = True
 
-    logging.info("- done")
+    if not changes_detected:
+        logging.info("- all column datatypes match")
     return changes_detected
 
 def order_columns(table_fields, dataframe_fields):
@@ -285,11 +288,10 @@ def order_columns(table_fields, dataframe_fields):
 
     # Combine ordered and additional columns
     logging.info("- ordered")
-    return ordered_columns + additional_columns
+    ordered_columns = ordered_columns + additional_columns
+    return ordered_columns
 
-def merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg):
-    logging.info("Comparing existing Iceberg Table schema to dataframe")
-
+def merge_into_existing_table(spark, df, iceberg_table, table_location, partition_field):
     # Schemas
     table_schema = spark.table(iceberg_table).schema
     table_fields = {field.name: field.dataType for field in table_schema.fields}
@@ -310,11 +312,12 @@ def merge_into_existing_table(spark, df, iceberg_table, cfg_iceberg):
     df = df.select(*ordered_columns)
 
     # Append to existing table
-    logging.info('- appending to existing table')
+    logging.info('')
+    logging.info('Appending to existing table')
     df.writeTo(iceberg_table) \
         .option("merge-schema", "true") \
-        .option("check-ordering", "false") \
-        .tableProperty("location", cfg_iceberg['table']['location']) \
-        .partitionedBy(cfg_iceberg['partition']['field']) \
+        .option("check-ordering", "True") \
+        .tableProperty("location", table_location) \
+        .partitionedBy(partition_field) \
         .append()
-    logging.info('- success!')
+    logging.info('- appended!')

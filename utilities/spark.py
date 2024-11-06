@@ -306,23 +306,23 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field):
     # Log new columns - no action needed as merge-schema option handles this
     log_new_columns(table_fields, dataframe_fields)
 
-    # Add columns that exist in the Table but are missing in the Dataframe
-    df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
+    # # Add columns that exist in the Table but are missing in the Dataframe
+    # df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
 
     # Identify columns with changed formats
     log_changed_columns(table_fields, dataframe_fields)
 
-    # Order columns to match table (new ones at the end)
-    ordered_columns = order_columns(table_fields, dataframe_fields)
-    df = df.select(*ordered_columns)
-    logging.info(f"- df.sel columns order: {df.columns}")
+    # # Order columns to match table (new ones at the end)
+    # ordered_columns = order_columns(table_fields, dataframe_fields)
+    # df = df.select(*ordered_columns)
+    # logging.info(f"- df.sel columns order: {df.columns}")
 
     # Append to existing table
     logging.info('')
     logging.info('Appending to existing table')
     df.writeTo(iceberg_table) \
-        .option("merge-schema", "true") \
-        .option("check-ordering", "false") \
+        .option("mergeSchema", "true") \
         .partitionedBy(partition_field) \
         .append()
     logging.info('- appended!')
+    # .option("check-ordering", "false") \

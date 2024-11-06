@@ -94,7 +94,7 @@ def log_spark_config(spark):
 
 # Read data based on the file type
 def read_data(spark, file_cfg, input_files):
-    logging.info(f"Data reading options (if any):")
+    logging.info(f"Data reading options")
 
     if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)

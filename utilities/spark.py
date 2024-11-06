@@ -311,26 +311,26 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field):
     # Log new columns - no action needed as merge-schema option handles this
     log_new_columns(table_fields, dataframe_fields)
 
-    # Add columns that exist in the Table but are missing in the Dataframe
-    df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
+    # # Add columns that exist in the Table but are missing in the Dataframe
+    # df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
 
     # Identify columns with changed formats
     log_changed_columns(table_fields, dataframe_fields)
 
-    # Order columns to match table (new ones at the end)
-    ordered_columns = order_columns(table_fields, dataframe_fields)
-    df = df.select(*ordered_columns)
-    logging.info(f"- df.sel columns order: {df.columns}")
+    # # Order columns to match table (new ones at the end)
+    # ordered_columns = order_columns(table_fields, dataframe_fields)
+    # df = df.select(*ordered_columns)
+    # logging.info(f"- df.sel columns order: {df.columns}")
 
-    # Separate new columns for initial schema evolution
-    new_columns = [col for col in dataframe_fields if col not in table_fields]
-    if new_columns:
-        logging.info(f"")
-        logging.info(f"Evolving schema by writing only new columns: {new_columns}")
-        df_new_columns = df.select(*new_columns)
-        df_new_columns.writeTo(iceberg_table) \
-            .option("mergeSchema", "true") \
-            .append()
+    # # Separate new columns for initial schema evolution
+    # new_columns = [col for col in dataframe_fields if col not in table_fields]
+    # if new_columns:
+    #     logging.info(f"")
+    #     logging.info(f"Evolving schema by writing only new columns: {new_columns}")
+    #     df_new_columns = df.select(*new_columns)
+    #     df_new_columns.writeTo(iceberg_table) \
+    #         .option("mergeSchema", "true") \
+    #         .append()
 
     # Append to existing table
     logging.info('')

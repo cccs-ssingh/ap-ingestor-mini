@@ -165,7 +165,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         # Append to existing Iceberg Table
         merge_into_existing_table(
             spark, df, iceberg_table,
-            cfg_iceberg['partition']['field']
+            cfg_iceberg['partition']['field'],
+            cfg_iceberg['table']['location']
         )
 
     # # Calculate time taken
@@ -227,12 +228,12 @@ def create_new_iceberg_table(df, iceberg_table, table_location, partition_field)
     logging.info(f"No existing table found!")
     logging.info(f"- creating a new Iceberg Table.")
     df.writeTo(iceberg_table) \
+        .tableProperty("location", table_location) \
         .option("mergeSchema", "true") \
         .option("check-ordering", "false") \
         .partitionedBy(partition_field) \
         .create()
     logging.info(f"- created: {iceberg_table}")
-#             .tableProperty("location", table_location) \
 
 def log_new_columns(table_fields, dataframe_fields):
     logging.info("")
@@ -302,7 +303,7 @@ def order_columns(table_fields, dataframe_fields):
     logging.info(f"- new df columns order: {ordered_columns}")
     return ordered_columns
 
-def merge_into_existing_table(spark, df, iceberg_table, partition_field):
+def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_location):
     # Schemas
     table_schema = spark.table(iceberg_table).schema
     table_fields =     {field.name: field.dataType for field in table_schema.fields}
@@ -311,15 +312,15 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field):
     # Log new columns - no action needed as merge-schema option handles this
     log_new_columns(table_fields, dataframe_fields)
 
-    # Add columns that exist in the Table but are missing in the Dataframe
-    df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
+    # # Add columns that exist in the Table but are missing in the Dataframe
+    # df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
 
     # Identify columns with changed formats
     log_changed_columns(table_fields, dataframe_fields)
 
-    # Order columns to match table (new ones at the end)
+    # # Order columns to match table (new ones at the end)
     ordered_columns = order_columns(table_fields, dataframe_fields)
-    df = df.select(*ordered_columns)
+    # df = df.select(*ordered_columns)
 
     # # Separate new columns for initial schema evolution
     # new_columns = [col for col in dataframe_fields if col not in table_fields]
@@ -335,6 +336,7 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field):
     logging.info('')
     logging.info(f'Appending to: {iceberg_table}')
     df.writeTo(iceberg_table) \
+        .tableProperty("location", table_location) \
         .option("mergeSchema", "true") \
         .option("check-ordering", "false") \
         .partitionedBy(partition_field) \

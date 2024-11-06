@@ -52,9 +52,9 @@ def create_spark_session(spark_cfg, app_name):
         spark_builder.config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"])
         spark_builder.config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0")
         spark_builder.config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"])
-        spark_builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-        spark_builder.config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog")
-        spark_builder.config("spark.sql.catalog.spark_catalog.type", "hive")
+        # spark_builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        # spark_builder.config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog")
+        # spark_builder.config("spark.sql.catalog.spark_catalog.type", "hive")
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)
@@ -227,10 +227,12 @@ def create_new_iceberg_table(df, iceberg_table, table_location, partition_field)
     logging.info(f"No existing table found!")
     logging.info(f"- creating a new Iceberg Table.")
     df.writeTo(iceberg_table) \
-        .tableProperty("location", table_location) \
+        .option("mergeSchema", "true") \
+        .option("check-ordering", "false") \
         .partitionedBy(partition_field) \
         .create()
     logging.info(f"- created: {iceberg_table}")
+#             .tableProperty("location", table_location) \
 
 def log_new_columns(table_fields, dataframe_fields):
     logging.info("")
@@ -309,20 +311,30 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field):
     # Log new columns - no action needed as merge-schema option handles this
     log_new_columns(table_fields, dataframe_fields)
 
-    # # Add columns that exist in the Table but are missing in the Dataframe
-    # df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
+    # Add columns that exist in the Table but are missing in the Dataframe
+    df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
 
     # Identify columns with changed formats
     log_changed_columns(table_fields, dataframe_fields)
 
-    # # Order columns to match table (new ones at the end)
-    # ordered_columns = order_columns(table_fields, dataframe_fields)
-    # df = df.select(*ordered_columns)
-    # logging.info(f"- df.sel columns order: {df.columns}")
+    # Order columns to match table (new ones at the end)
+    ordered_columns = order_columns(table_fields, dataframe_fields)
+    df = df.select(*ordered_columns)
+    logging.info(f"- df.sel columns order: {df.columns}")
+
+    # Separate new columns for initial schema evolution
+    new_columns = [col for col in dataframe_fields if col not in table_fields]
+    if new_columns:
+        logging.info(f"")
+        logging.info(f"Evolving schema by writing only new columns: {new_columns}")
+        df_new_columns = df.select(*new_columns)
+        df_new_columns.writeTo(iceberg_table) \
+            .option("mergeSchema", "true") \
+            .append()
 
     # Append to existing table
     logging.info('')
-    logging.info('Appending to existing table')
+    logging.info(f'Appending to: {iceberg_table}')
     df.writeTo(iceberg_table) \
         .option("mergeSchema", "true") \
         .option("check-ordering", "false") \

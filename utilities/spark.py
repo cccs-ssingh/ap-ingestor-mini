@@ -52,6 +52,9 @@ def create_spark_session(spark_cfg, app_name):
         spark_builder.config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"])
         spark_builder.config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0")
         spark_builder.config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"])
+        spark_builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        spark_builder.config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog")
+        spark_builder.config("spark.sql.catalog.spark_catalog.type", "hive")
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)

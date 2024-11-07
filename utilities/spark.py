@@ -158,9 +158,13 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         )
 
     # Logs
+    elapsed_time = seconds_to_hh_mm_ss(time.time() - start_time)
+    df_size_in_memory = df.rdd.map(lambda row: len(str(row))).reduce(lambda x, y: x + y)
     logging.info('')
-    logging.info('Metrics:')
-    logging.info(f"- added {df.count()} records in {seconds_to_hh_mm_ss(time.time() - start_time)}")
+    logging.info('Dataframe Metrics:')
+    logging.info(f"-      records: {df.count()}")
+    logging.info(f"- processed in: {elapsed_time}")
+    logging.info(f"-  memory size: {df_size_in_memory}")
 
 
 def apply_custom_ingestor_rules(df, module_name):

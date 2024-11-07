@@ -22,6 +22,7 @@ def create_spark_session(spark_cfg, app_name):
         spark_builder = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
             .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
+            .config("spark.ui.showConsoleProgress", "false") \
             .config("spark.cores.max", int(cfg['spark.executor.cores']) * int(cfg['spark.executor.instances']))
 
         for key, value in cfg.items():
@@ -31,7 +32,8 @@ def create_spark_session(spark_cfg, app_name):
         # cmd-line specified config
         spark_builder = SparkSession.builder \
             .appName(f"APA4b Ingestor-Mini: {app_name}") \
-            .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077")
+            .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
+            .config("spark.ui.showConsoleProgress", "false")  # Disable progress bars
 
         spark_builder.config("spark.executor.cores", spark_cfg['executor']["cores"])
         spark_builder.config("spark.executor.memory", spark_cfg['executor']["memory"])
@@ -40,9 +42,7 @@ def create_spark_session(spark_cfg, app_name):
         spark_builder.config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"])
         spark_builder.config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0")
         spark_builder.config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"])
-        # spark_builder.config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-        # spark_builder.config("spark.sql.catalog.spark_catalog", "org.apache.iceberg.spark.SparkCatalog")
-        # spark_builder.config("spark.sql.catalog.spark_catalog.type", "hive")
+        spark_builder.config("spark.ui.showConsoleProgress", "false")
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)
@@ -159,12 +159,10 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Logs
     elapsed_time = seconds_to_hh_mm_ss(time.time() - start_time)
-    df_size_in_memory = df.rdd.map(lambda row: len(str(row))).reduce(lambda x, y: x + y)
     logging.info('')
     logging.info('Dataframe Metrics:')
     logging.info(f"-      records: {df.count()}")
     logging.info(f"- processed in: {elapsed_time}")
-    logging.info(f"-  memory size: {df_size_in_memory}")
 
 
 def apply_custom_ingestor_rules(df, module_name):
@@ -314,7 +312,8 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
 
     # Append to existing table
     logging.info('')
-    logging.info(f"Appending  to: '{iceberg_table}' w/ schema evolution enabled (mergeSchema)")
+    logging.info(f"Appending to: '{iceberg_table}' w/ schema evolution enabled (mergeSchema)")
+    logging.info(f"- schema evolution enabled (mergeSchema)")
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
         .option("mergeSchema", "true") \

@@ -94,7 +94,7 @@ def log_spark_config(spark):
 
 # Read data based on the file type
 def read_data(spark, file_cfg, input_files):
-    logging.info(f"Data reading options")
+    logging.info(f"Reading input data")
 
     if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
@@ -184,7 +184,24 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Log metrics
     logging.info('')
     logging.info('Metrics:')
+    print(f"- duration: {time.time() - start_time:.2f} seconds")
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
+    # Load the table to get its metadata
+    iceberg_table = spark.catalog.loadTable("spark_catalog.default.my_table")
+
+    # Get the latest snapshot
+    snapshot = iceberg_table.currentSnapshot()
+
+    # Retrieve metrics
+    num_data_files = snapshot.summary().get("total-data-files")
+    total_data_size = snapshot.summary().get("total-data-size")
+    added_files_count = snapshot.summary().get("added-data-files")
+    added_data_size = snapshot.summary().get("added-data-size")
+
+    print(f"Number of data files in the table: {num_data_files}")
+    print(f"Total data size in bytes: {total_data_size}")
+    print(f"New data files added: {added_files_count}")
+    print(f"Size of new data added in bytes: {added_data_size}")
 
 def apply_custom_ingestor_rules(df, module_name):
     # Construct the full file path and check if it exists
@@ -333,7 +350,7 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
 
     # Append to existing table
     logging.info('')
-    logging.info(f'Appending to: {iceberg_table}')
+    logging.info(f"Appending  to: '{iceberg_table}' w/ schema evolution enabled (mergeSchema)")
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
         .option("mergeSchema", "true") \

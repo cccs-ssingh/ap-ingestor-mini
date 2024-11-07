@@ -1,4 +1,4 @@
-
+import logging
 
 # Function to inspect the snapshots table
 def inspect_snapshots_table(spark, iceberg_table):

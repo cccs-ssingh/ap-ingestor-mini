@@ -134,9 +134,6 @@ def read_data(spark, file_cfg, input_files):
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info("")
 
-    # Get the snapshot before the write
-    # pre_write_snapshot = get_latest_snapshot(spark, iceberg_table)
-
     # Start timing
     start_time = time.time()
 
@@ -181,27 +178,26 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # # Get the number of records written
     # record_count = df.count()
 
-    # Log metrics
+    # Metrics
+    # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
+
+    # Load Iceberg table metadata to retrieve snapshot information
+    iceberg_table_obj = spark.catalog.loadTable(iceberg_table)
+
+    # Retrieve metrics from the snapshot summary
+    latest_snapshot = iceberg_table_obj.currentSnapshot()
+
+    # Logs
     logging.info('')
     logging.info('Metrics:')
-    print(f"- duration: {time.time() - start_time:.2f} seconds")
-    # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
-    # Load the table to get its metadata
-    iceberg_table = spark.catalog.loadTable("spark_catalog.default.my_table")
+    logging.info('- Ingestion:')
+    logging.info(f" -           duration: {time.time() - start_time:.2f} seconds")
+    logging.info(f" - # data files added: {latest_snapshot.summary().get('added-data-files')}")
+    logging.info(f" -               size: {format_size(latest_snapshot.summary().get('added-data-size'))}")
+    logging.info('- Table:')
+    logging.info(f"- total # of data files: {latest_snapshot.summary().get('total-data-files')}")
+    logging.info(f"-    total size of data: {format_size(latest_snapshot.summary().get('total-data-size'))}")
 
-    # Get the latest snapshot
-    snapshot = iceberg_table.currentSnapshot()
-
-    # Retrieve metrics
-    num_data_files = snapshot.summary().get("total-data-files")
-    total_data_size = snapshot.summary().get("total-data-size")
-    added_files_count = snapshot.summary().get("added-data-files")
-    added_data_size = snapshot.summary().get("added-data-size")
-
-    print(f"Number of data files in the table: {num_data_files}")
-    print(f"Total data size in bytes: {total_data_size}")
-    print(f"New data files added: {added_files_count}")
-    print(f"Size of new data added in bytes: {added_data_size}")
 
 def apply_custom_ingestor_rules(df, module_name):
     # Construct the full file path and check if it exists

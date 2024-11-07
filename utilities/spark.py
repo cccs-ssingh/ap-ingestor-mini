@@ -161,7 +161,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Logs
     elapsed_time = seconds_to_hh_mm_ss(time.time() - start_time)
     logging.info('')
-    logging.info('Dataframe Metrics:')
+    logging.info('Metrics:')
     logging.info(f"-      records: {df.count()}")
     logging.info(f"- processed in: {elapsed_time}s")
 

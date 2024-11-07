@@ -319,7 +319,7 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
     log_changed_columns(table_fields, dataframe_fields)
 
     # # Order columns to match table (new ones at the end)
-    ordered_columns = order_columns(table_fields, dataframe_fields)
+    # ordered_columns = order_columns(table_fields, dataframe_fields)
     # df = df.select(*ordered_columns)
 
     # # Separate new columns for initial schema evolution

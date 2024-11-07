@@ -1,4 +1,3 @@
-import logging
 import time
 import os
 import json
@@ -160,10 +159,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # # Get the snapshot after the write
     # post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
-    #
+
     # # Get the new files written during the current operation
     # new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
-    #
 
     # Metrics
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
@@ -176,7 +174,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('Metrics:')
     logging.info('- Ingestion:')
     logging.info(f" -      added records: {df.count()}")
-    logging.info(f" -           duration: {time.time() - start_time:.2f} seconds")
+    logging.info(f" -           duration: {seconds_to_hh_mm_ss(time.time() - start_time)}")
     logging.info(f" -               size: {format_size(latest_snapshot.summary().get('added-data-size'))}")
     logging.info(f" - # data files added: {latest_snapshot.summary().get('added-data-files')}")
     logging.info('')

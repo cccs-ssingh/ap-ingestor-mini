@@ -1,3 +1,4 @@
+import logging
 import time
 import os
 import json
@@ -8,15 +9,6 @@ from pyspark.sql import SparkSession
 from utilities.iceberg import *
 from pyspark.sql.functions import lit, to_date
 
-
-def format_size(bytes_size):
-    """
-    Convert bytes to a human-readable format (KB, MB, GB, etc.).
-    """
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes_size < 1024:
-            return f"{bytes_size:.2f} {unit}"
-        bytes_size /= 1024
 
 # Function to create Spark session with Iceberg
 def create_spark_session(spark_cfg, app_name):
@@ -172,8 +164,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # # Get the new files written during the current operation
     # new_files, total_size = get_new_files(spark, iceberg_table, pre_write_snapshot, post_write_snapshot)
     #
-    # # Get the number of records written
-    # record_count = df.count()
 
     # Metrics
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
@@ -185,8 +175,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('')
     logging.info('Metrics:')
     logging.info('- Ingestion:')
+    logging.info(f" -      added records: {df.count()}")
     logging.info(f" -           duration: {time.time() - start_time:.2f} seconds")
-    logging.info(f" -      added records: {time.time() - start_time:.2f} seconds")
     logging.info(f" -               size: {format_size(latest_snapshot.summary().get('added-data-size'))}")
     logging.info(f" - # data files added: {latest_snapshot.summary().get('added-data-files')}")
     logging.info('')

@@ -1,4 +1,14 @@
-import logging
+def format_size(bytes_size):
+    """
+    Convert bytes to a human-readable format (KB, MB, GB, etc.).
+    """
+    if bytes_size is None or bytes_size == 0:
+        return "0 B"
+
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_size < 1024:
+            return f"{bytes_size:.2f} {unit}"
+        bytes_size /= 1024
 
 # Function to inspect the snapshots table
 def inspect_snapshots_table(spark, iceberg_table):

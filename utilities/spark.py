@@ -1,4 +1,3 @@
-import logging
 import time
 import os
 import json
@@ -7,9 +6,7 @@ import importlib
 
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
-from pyspark.sql.utils import AnalysisException
-from pyspark.sql.functions import lit, to_date, to_timestamp, col, from_json, to_json
-from pyspark.sql.types import StringType, ArrayType, StructType
+from pyspark.sql.functions import lit, to_date
 
 
 def format_size(bytes_size):
@@ -141,7 +138,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.debug(f"- {len(files_to_process)} files to process")
     df = read_data(spark, cfg_file, files_to_process)
 
-    # Populate timeperiod column for partitioning
+    # Populate partition column
     df = populate_timeperiod_partition_column(
         df,
         cfg_iceberg['partition']['field'],
@@ -155,20 +152,20 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Write the dataframe
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
     if not spark.catalog.tableExists(iceberg_table):
-        # Brand-new iceberg table
-        create_new_iceberg_table(df, iceberg_table, cfg_iceberg['table']['location'], cfg_iceberg['partition']['field'])
-
+        # New Iceberg table
+        create_new_iceberg_table(
+            df, iceberg_table,
+            cfg_iceberg['table']['location'],
+            cfg_iceberg['partition']['field']
+        )
     else:
-        # Append to existing Iceberg Table
+        # Old Iceberg Table
         merge_into_existing_table(
             spark, df, iceberg_table,
             cfg_iceberg['partition']['field'],
             cfg_iceberg['table']['location']
         )
 
-    # # Calculate time taken
-    # time_taken = time.time() - start_time
-    #
     # # Get the snapshot after the write
     # post_write_snapshot = get_latest_snapshot(spark, iceberg_table)
     #
@@ -181,19 +178,18 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Metrics
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
-    # Load Iceberg table metadata to retrieve snapshot information
-    iceberg_table_obj = spark.catalog.loadTable(iceberg_table)
-
     # Retrieve metrics from the snapshot summary
-    latest_snapshot = iceberg_table_obj.currentSnapshot()
+    latest_snapshot = get_latest_snapshot(spark, iceberg_table)
 
     # Logs
     logging.info('')
     logging.info('Metrics:')
     logging.info('- Ingestion:')
     logging.info(f" -           duration: {time.time() - start_time:.2f} seconds")
-    logging.info(f" - # data files added: {latest_snapshot.summary().get('added-data-files')}")
+    logging.info(f" -      added records: {time.time() - start_time:.2f} seconds")
     logging.info(f" -               size: {format_size(latest_snapshot.summary().get('added-data-size'))}")
+    logging.info(f" - # data files added: {latest_snapshot.summary().get('added-data-files')}")
+    logging.info('')
     logging.info('- Table:')
     logging.info(f"- total # of data files: {latest_snapshot.summary().get('total-data-files')}")
     logging.info(f"-    total size of data: {format_size(latest_snapshot.summary().get('total-data-size'))}")

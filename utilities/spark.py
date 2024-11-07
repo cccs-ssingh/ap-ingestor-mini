@@ -187,16 +187,14 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
 def apply_custom_ingestor_rules(df, module_name):
-    logging.info(f"")
-    logging.info(f"Checking for custom ingestor file")
-
     # Construct the full file path and check if it exists
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     custom_ingestors_dir = os.path.join(project_root, "custom_ingestors")
     custom_ingestor_path = os.path.join(custom_ingestors_dir, f"{module_name}.py")
 
     if os.path.exists(custom_ingestor_path):
-        logging.info(f"- custom ingestor exits: '{custom_ingestor_path}'")
+        logging.info(f"")
+        logging.info(f"Custom ingestor exits: '{custom_ingestor_path}'")
 
         # Add the custom_ingestors directory to sys.path, not the full file path
         sys.path.insert(0, custom_ingestors_dir)
@@ -213,7 +211,7 @@ def apply_custom_ingestor_rules(df, module_name):
             # Clean up sys.path by removing the added directory
             sys.path.pop(0)
     else:
-        logging.info(f"- none found")
+        return df
 
 def populate_timeperiod_partition_column(df, partition_field, partition_value, partition_format):
     logging.info(f"")

@@ -23,7 +23,7 @@ def list_blobs_in_directory(conn_str, container_name, container_dir):
 
     logging.info(f"")
     logging.info(f"Connected to: {container_client.url}")
-    logging.info(f"- retrieving blobs from container '{container_name}' in directory '{container_dir}'")
+    logging.info(f"- retrieving blob urls from  [{container_name}]:{container_dir}")
     blobs = container_client.list_blobs(name_starts_with=container_dir)
 
     blob_urls = []

@@ -227,11 +227,12 @@ def create_new_iceberg_table(df, iceberg_table, table_location, partition_field)
     logging.info(f"- creating a new Iceberg Table.")
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
-        .option("mergeSchema", "true") \
-        .option("check-ordering", "false") \
+        .tableProperty("write.spark.accept-any-schema", "true") \
         .partitionedBy(partition_field) \
         .create()
     logging.info(f"- created: {iceberg_table}")
+    # .option("mergeSchema", "true") \
+    # .option("check-ordering", "false") \
 
 def log_new_columns(table_fields, dataframe_fields):
     logging.info("")

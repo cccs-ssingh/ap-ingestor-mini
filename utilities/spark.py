@@ -166,8 +166,12 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Metrics
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
-    # Retrieve metrics from the snapshot summary
-    latest_snapshot = get_latest_snapshot(spark, iceberg_table)
+    # # Calculate time taken
+    # duration = time.time() - start_time
+    #
+    # # Retrieve the latest snapshot for metrics
+    # latest_snapshot = get_latest_snapshot(spark, iceberg_table)
+    # summary = latest_snapshot.summary()
 
     # Logs
     logging.info('')
@@ -175,12 +179,28 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('- Ingestion:')
     logging.info(f" -      added records: {df.count()}")
     logging.info(f" -           duration: {seconds_to_hh_mm_ss(time.time() - start_time)}")
-    logging.info(f" -               size: {format_size(latest_snapshot.summary().get('added-data-size'))}")
-    logging.info(f" - # data files added: {latest_snapshot.summary().get('added-data-files')}")
-    logging.info('')
-    logging.info('- Table:')
-    logging.info(f"- total # of data files: {latest_snapshot.summary().get('total-data-files')}")
-    logging.info(f"-    total size of data: {format_size(latest_snapshot.summary().get('total-data-size'))}")
+    # logging.info(f" -               size: {format_size(latest_snapshot.summary().get('added-data-size'))}")
+    # logging.info(f" - # data files added: {latest_snapshot.summary().get('added-data-files')}")
+    # logging.info('')
+    # logging.info('- Table:')
+    # logging.info(f"- total # of data files: {latest_snapshot.summary().get('total-data-files')}")
+    # logging.info(f"-    total size of data: {format_size(latest_snapshot.summary().get('total-data-size'))}")
+
+    # End timing
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+
+    # Collect metrics
+    metrics = {
+        "elapsed_time": elapsed_time,
+        "num_files": df.rdd.getNumPartitions(),
+        "file_sizes": df.rdd.map(lambda row: len(row)).collect()
+    }
+
+    # Print metrics
+    logging.info(f"Elapsed time: {metrics['elapsed_time']} seconds")
+    logging.info(f"Number of files written: {metrics['num_files']}")
+    logging.info(f"Sizes of files: {metrics['file_sizes']}")
 
 
 def apply_custom_ingestor_rules(df, module_name):

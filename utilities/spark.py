@@ -13,11 +13,6 @@ from pyspark.sql.functions import lit, to_date
 def create_spark_session(spark_cfg, app_name):
     logging.debug(f"")
     logging.debug("Creating Spark session")
-
-    # # Spark session configuration
-    # if spark_cfg.get('config'):
-
-    # Dynamic spark config
     cfg = json.loads(spark_cfg)
 
     spark_builder = SparkSession.builder \
@@ -28,22 +23,6 @@ def create_spark_session(spark_cfg, app_name):
 
     for key, value in cfg.items():
         spark_builder.config(key, value)
-
-    # else:
-    #     # cmd-line specified config
-    #     spark_builder = SparkSession.builder \
-    #         .appName(f"APA4b Ingestor-Mini: {app_name}") \
-    #         .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
-    #         .config("spark.ui.showConsoleProgress", "false")  # Disable progress bars
-    #
-    #     spark_builder.config("spark.executor.cores", spark_cfg['executor']["cores"])
-    #     spark_builder.config("spark.executor.memory", spark_cfg['executor']["memory"])
-    #     spark_builder.config("spark.executor.instances", spark_cfg['executor']["instances"])
-    #     spark_builder.config("spark.driver.memory", spark_cfg['driver']["memory"])
-    #     spark_builder.config("spark.sql.files.maxPartitionBytes", spark_cfg['sql']["maxPartitionBytes"])
-    #     spark_builder.config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.18.0")
-    #     spark_builder.config("spark.cores.max", spark_cfg['executor']["cores"] * spark_cfg['executor']["instances"])
-    #     spark_builder.config("spark.ui.showConsoleProgress", "false")
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)

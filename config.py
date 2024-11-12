@@ -96,18 +96,18 @@ def create_cfg_dict(args):
         },
     }
 
-    # Spark resources
-    if config_dict['spark']:
-        # passed in as cmd line arg json string, unpack into dict
-        config_dict['spark'] = json.loads(config_dict['spark'])
-    else:
-        # Set default values
-        config_dict['spark'] = {
-            'spark.executor.instances': '1',
-            'spark.executor.cores': '4',
-            'spark.executor.memory': '4g',
-            'spark.driver.memory': '4g',
-        }
+    # # Spark resources
+    # if config_dict['spark']:
+    #     # passed in as cmd line arg json string, unpack into dict
+    #     config_dict['spark'] = json.loads(config_dict['spark'])
+    # else:
+    #     # Set default values
+    #     config_dict['spark'] = {
+    #         'spark.executor.instances': '1',
+    #         'spark.executor.cores': '4',
+    #         'spark.executor.memory': '4g',
+    #         'spark.driver.memory': '4g',
+    #     }
 
     return config_dict
 

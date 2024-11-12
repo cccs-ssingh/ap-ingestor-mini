@@ -47,10 +47,6 @@ def filter_urls_by_file_type(blob_urls, file_type):
     return blob_urls
 
 def determine_files_to_process(azure_cfg, file_type):
-
-    if not azure_cfg['storage_account']['conn_str']:
-        azure_cfg['storage_account']['conn_str'] = get_conn_str_from_vault()
-
     azure_blob_urls = list_blobs_in_directory(
         azure_cfg['storage_account']['conn_str'],
         azure_cfg['container']['input']['name'],
@@ -58,20 +54,3 @@ def determine_files_to_process(azure_cfg, file_type):
     )
     azure_blob_urls_filtered = filter_urls_by_file_type(azure_blob_urls, file_type)
     return azure_blob_urls_filtered
-
-def get_conn_str_from_vault():
-    from hogwarts.auth.vault.vault_client import VaultClient
-
-    logging.info("getting spellbooksecret from vault")
-
-    vault = VaultClient()
-    vault.login()
-
-    # apa4b-sg is the group name, apdatalakeudatafeeds is the secret name
-    s = vault.get_group_secret('APA4B-sg', 'apdatalakeudatafeeds')
-
-    # Key inside the secret
-    conn_str = s.get("conn_str")
-    # conn_str is now the conn_str in the APA4B_SG_APDATALAKEUDATAFEEDS_CONN_STR secret
-
-    return conn_str

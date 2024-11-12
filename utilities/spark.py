@@ -141,7 +141,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     elapsed_time = seconds_to_hh_mm_ss(time.time() - start_time)
     logging.info('')
     logging.info('Metrics:')
-    logging.info(f"-      records: {df.count()}")
+    logging.info(f"-      records: {df.count():,}")
     logging.info(f"- processed in: {elapsed_time}s")
 
 
@@ -231,7 +231,7 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
 
     # Append to existing table
     logging.info('')
-    logging.info(f"Appending to: '{iceberg_table}' w/ schema evolution enabled (mergeSchema)")
+    logging.info(f"Appending to: '{iceberg_table}'")
     logging.info(f"- schema evolution enabled (mergeSchema)")
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \

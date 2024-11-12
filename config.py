@@ -52,13 +52,13 @@ def parse_cmd_line_args(args, kwargs):
 
 # Azure Connection string from env var
 def extract_conn_str_from_env_vars():
-    for key, value in os.environ.items():
-        logging.info(f"{key}:{value}")
-        try:
+    try:
+        for key, value in os.environ.items():
+            logging.info(f"{key}:{value}")
             if key.endswith('CONN_STR'):
                 return value
-        except:
-            return None
+    except:
+        return get_conn_str_from_vault()
 
 def create_cfg_dict(args):
     conn_str = extract_conn_str_from_env_vars()
@@ -101,3 +101,20 @@ def create_cfg_dict(args):
             }
         },
     }
+
+def get_conn_str_from_vault():
+    from hogwarts.auth.vault.vault_client import VaultClient
+
+    logging.info("getting spellbooksecret from vault")
+
+    vault = VaultClient()
+    vault.login()
+
+    # apa4b-sg is the group name, apdatalakeudatafeeds is the secret name
+    s = vault.get_group_secret('APA4B-sg', 'apdatalakeudatafeeds')
+
+    # Key inside the secret
+    conn_str = s.get("conn_str")
+    # conn_str is now the conn_str in the APA4B_SG_APDATALAKEUDATAFEEDS_CONN_STR secret
+
+    return conn_str

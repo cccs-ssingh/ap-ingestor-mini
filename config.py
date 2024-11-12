@@ -4,6 +4,11 @@ import argparse
 from utilities.az import *
 
 def parse_cmd_line_args(args, kwargs):
+    import sys
+    spark_conf = [arg for arg in sys.argv if arg.startswith("--conf")]
+    for cfg in spark_conf:
+        print(cfg)
+
     arg_parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
 
     # Azure
@@ -30,6 +35,7 @@ def parse_cmd_line_args(args, kwargs):
 
     # Spark
     arg_parser.add_argument('--spark_config', help="JSON string to represent spark config")
+    arg_parser.add_argument('--conf', help="SpellbookLapsOperator conf cmd-line-args")
 
     #  Kubernetes mode
     arg_parser.add_argument('--k8s_name_space', help="Kubernetes name space")

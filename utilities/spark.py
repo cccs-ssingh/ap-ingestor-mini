@@ -190,8 +190,6 @@ def create_new_iceberg_table(df, iceberg_table, table_location, partition_field)
         .partitionedBy(partition_field) \
         .create()
     logging.info(f"- created: {iceberg_table}")
-    # .option("mergeSchema", "true") \
-    # .option("check-ordering", "false") \
 
 def log_new_columns(table_fields, dataframe_fields):
     logging.info("")
@@ -203,20 +201,6 @@ def log_new_columns(table_fields, dataframe_fields):
     else:
         logging.info("- no new columns")
 
-def add_missing_columns_to_df(table_fields, dataframe_fields, df):
-    logging.info("")
-    logging.info("Checking for missing columns in the dataframe")
-
-    missing_columns = set(table_fields) - set(dataframe_fields)
-    if missing_columns:
-        for column in missing_columns:
-            column_type = table_fields[column]
-            df = df.withColumn(column, lit(None).cast(column_type))
-            logging.info(f"- added: {column} -> {column_type}")
-    else:
-        logging.info("- no columns missing")
-    return df
-
 def log_changed_columns(table_fields, dataframe_fields):
     logging.info("")
     logging.info("Checking for changed column data types")
@@ -224,42 +208,14 @@ def log_changed_columns(table_fields, dataframe_fields):
 
     for field, data_type in dataframe_fields.items():
         if field in table_fields and table_fields[field] != data_type:
-            logging.info(f"- {field} type mismatch:")
-            logging.info(f"   -     Table type = {table_fields[field]}")
-            logging.info(f"   - DataFrame type = {data_type}")
+            logging.info(f"- Column:{field} data-type discrepancy:")
+            logging.info(f"  -     Table type = {table_fields[field]}")
+            logging.info(f"  - DataFrame type = {data_type}")
             changes_detected = True
 
     if not changes_detected:
         logging.info("- all column datatypes match")
     return changes_detected
-
-def order_columns(table_fields, dataframe_fields):
-    """
-    Orders the columns in `dataframe_fields` to match the order of `table_fields`.
-    Any columns present in `dataframe_fields` but not in `table_fields` are appended at the end.
-
-    Parameters:
-        table_fields (dict): Dictionary of table columns with column names as keys and data types as values.
-        dataframe_fields (dict): Dictionary of DataFrame columns with column names as keys and data types as values.
-
-    Returns:
-        list: Ordered list of column names for the DataFrame.
-    """
-    logging.info("")
-    logging.info("Ordering columns to match table")
-    logging.info(f"- old df columns order: {[col for col in dataframe_fields]}")
-    logging.info(f"-  table columns order: {[col for col in table_fields]}")
-
-    # List of ordered columns based on the table schema
-    ordered_columns = [col for col in table_fields if col in dataframe_fields]
-
-    # Additional columns that are in the DataFrame but not in the table schema
-    additional_columns = [col for col in dataframe_fields if col not in table_fields]
-
-    # Combine ordered and additional columns
-    ordered_columns = ordered_columns + additional_columns
-    logging.info(f"- new df columns order: {ordered_columns}")
-    return ordered_columns
 
 def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_location):
     # Schemas
@@ -270,25 +226,8 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
     # Log new columns - no action needed as merge-schema option handles this
     log_new_columns(table_fields, dataframe_fields)
 
-    # # Add columns that exist in the Table but are missing in the Dataframe
-    # df = add_missing_columns_to_df(table_fields, dataframe_fields, df)
-
     # Identify columns with changed formats
     log_changed_columns(table_fields, dataframe_fields)
-
-    # # Order columns to match table (new ones at the end)
-    # ordered_columns = order_columns(table_fields, dataframe_fields)
-    # df = df.select(*ordered_columns)
-
-    # # Separate new columns for initial schema evolution
-    # new_columns = [col for col in dataframe_fields if col not in table_fields]
-    # if new_columns:
-    #     logging.info(f"")
-    #     logging.info(f"Evolving schema by writing only new columns: {new_columns}")
-    #     df_new_columns = df.select(*new_columns)
-    #     df_new_columns.writeTo(iceberg_table) \
-    #         .option("mergeSchema", "true") \
-    #         .append()
 
     # Append to existing table
     logging.info('')

@@ -52,18 +52,15 @@ def parse_cmd_line_args(args, kwargs):
 
 # Azure Connection string from env var
 def extract_conn_str_from_env_vars():
-    try:
-        for key, value in os.environ.items():
-            logging.info(f"{key}:{value}")
-            if key.endswith('CONN_STR'):
-                return value
-    except:
-        logging.warning('unable to get CONN_STR from env vars')
-        return get_conn_str_from_vault()
+    for key, value in os.environ.items():
+        logging.info(f"{key}:{value}")
+        if key.endswith('CONN_STR'):
+            return value
 
 def create_cfg_dict(args):
     conn_str = extract_conn_str_from_env_vars()
-    print(f"conn str: {conn_str}")
+    if not conn_str:
+        conn_str = get_conn_str_from_vault()
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     return {

@@ -5,6 +5,7 @@ from utilities.spark import *
 # Main function
 def run(*args, **kwargs):
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    logging.info(f"====================================")
 
     # Organized cmd line args dictionary
     args = parse_cmd_line_args(args, kwargs)

@@ -142,6 +142,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('Metrics:')
     logging.info(f"-      records: {df.count():,}")
     logging.info(f"- processed in: {elapsed_time}s")
+    logging.info(f"====================================")
 
 
 def apply_custom_ingestor_rules(df, module_name):

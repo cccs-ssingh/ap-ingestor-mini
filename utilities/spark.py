@@ -13,16 +13,16 @@ from pyspark.sql.functions import lit, to_date
 def create_spark_session(spark_cfg, app_name):
     logging.debug(f"")
     logging.debug("Creating Spark session")
-    cfg = json.loads(spark_cfg)
+    # cfg = json.loads(spark_cfg)
 
     spark_builder = SparkSession.builder \
         .appName(f"APA4b Ingestor-Mini: {app_name}") \
         .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
         .config("spark.ui.showConsoleProgress", "false") \
-        .config("spark.cores.max", int(cfg['spark.executor.cores']) * int(cfg['spark.executor.instances']))
+        # .config("spark.cores.max", int(cfg['spark.executor.cores']) * int(cfg['spark.executor.instances']))
 
-    for key, value in cfg.items():
-        spark_builder.config(key, value)
+    # for key, value in cfg.items():
+    #     spark_builder.config(key, value)
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)

@@ -115,7 +115,6 @@ def get_conn_str_from_vault():
 
     # Key inside the secret
     conn_str = s.get("conn_str")
-    print(conn_str)
     # conn_str is now the conn_str in the APA4B_SG_APDATALAKEUDATAFEEDS_CONN_STR secret
 
     return conn_str

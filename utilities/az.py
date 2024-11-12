@@ -6,16 +6,6 @@ az_logger = logging.getLogger("azure")
 az_logger.setLevel(logging.WARNING)
 
 
-def parse_connection_string(conn_str):
-    """
-    Parse the Azure connection string to extract the AccountName and AccountKey.
-    """
-    # Split the connection string by semicolons to get the individual key-value pairs
-    conn_dict = dict(item.split("=", 1) for item in conn_str.split(";"))
-    account_name = conn_dict.get("AccountName")
-    account_key = conn_dict.get("AccountKey")
-    return account_name, account_key
-
 # Function to list blobs in a directory from Azure Blob Storage using connection string
 def list_blobs_in_directory(conn_str, container_name, container_dir):
     blob_service_client = BlobServiceClient.from_connection_string(conn_str)

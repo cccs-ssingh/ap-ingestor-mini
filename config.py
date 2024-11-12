@@ -1,7 +1,7 @@
 import os
 import argparse
-
-from utilities.az import *
+import logging
+# from utilities.az import *
 
 def parse_cmd_line_args(args, kwargs):
     import sys
@@ -58,10 +58,12 @@ def extract_conn_str_from_env_vars():
             if key.endswith('CONN_STR'):
                 return value
     except:
+        logging.warning('unable to get CONN_STR from env vars')
         return get_conn_str_from_vault()
 
 def create_cfg_dict(args):
     conn_str = extract_conn_str_from_env_vars()
+    print(conn_str)
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     return {
@@ -110,8 +112,9 @@ def get_conn_str_from_vault():
     vault = VaultClient()
     vault.login()
 
-    # apa4b-sg is the group name, apdatalakeudatafeeds is the secret name
-    s = vault.get_group_secret('APA4B-sg', 'apdatalakeudatafeeds')
+    group_name = 'APA4B-sg'
+    secret_name = 'apdatalakeudatafeeds'
+    s = vault.get_group_secret(group_name, secret_name)
 
     # Key inside the secret
     conn_str = s.get("conn_str")
@@ -119,3 +122,13 @@ def get_conn_str_from_vault():
     # conn_str is now the conn_str in the APA4B_SG_APDATALAKEUDATAFEEDS_CONN_STR secret
 
     return conn_str
+
+def parse_connection_string(conn_str):
+    """
+    Parse the Azure connection string to extract the AccountName and AccountKey.
+    """
+    # Split the connection string by semicolons to get the individual key-value pairs
+    conn_dict = dict(item.split("=", 1) for item in conn_str.split(";"))
+    account_name = conn_dict.get("AccountName")
+    account_key = conn_dict.get("AccountKey")
+    return account_name, account_key

@@ -54,7 +54,7 @@ def parse_cmd_line_args(args, kwargs):
 def extract_conn_str_from_env_vars():
     try:
         for key, value in os.environ.items():
-            logging.info(f"{key}:{value}")
+            # logging.info(f"{key}:{value}")
             if key.endswith('CONN_STR'):
                 return value
     except:
@@ -105,7 +105,7 @@ def create_cfg_dict(args):
 def get_conn_str_from_vault():
     from hogwarts.auth.vault.vault_client import VaultClient
 
-    logging.info("getting spellbooksecret from vault")
+    logging.info("Getting spellbooksecret from vault")
 
     vault = VaultClient()
     vault.login()
@@ -115,6 +115,7 @@ def get_conn_str_from_vault():
 
     # Key inside the secret
     conn_str = s.get("conn_str")
+    print(conn_str)
     # conn_str is now the conn_str in the APA4B_SG_APDATALAKEUDATAFEEDS_CONN_STR secret
 
     return conn_str

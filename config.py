@@ -1,13 +1,9 @@
 import os
 import argparse
 import logging
-# from utilities.az import *
+import json
 
 def parse_cmd_line_args(args, kwargs):
-    import sys
-    spark_conf = [arg for arg in sys.argv if arg.startswith("--conf")]
-    for cfg in spark_conf:
-        print(cfg)
 
     arg_parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
 
@@ -63,7 +59,7 @@ def create_cfg_dict(args):
         conn_str = get_conn_str_from_vault()
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
-    return {
+    config_dict = {
         "spark": args.spark_config,
         "file": {
             "type": args.file_type,
@@ -100,6 +96,21 @@ def create_cfg_dict(args):
             }
         },
     }
+
+    # Spark resources
+    if config_dict['spark']:
+        # passed in as cmd line arg json string, unpack into dict
+        config_dict['spark'] = json.loads(config_dict['spark'])
+    else:
+        # Set default values
+        config_dict['spark'] = {
+            'spark.executor.instances': '1',
+            'spark.executor.cores': '4',
+            'spark.executor.memory': '4g',
+            'spark.driver.memory': '4g',
+        }
+
+    return config_dict
 
 def get_conn_str_from_vault():
     from hogwarts.auth.vault.vault_client import VaultClient

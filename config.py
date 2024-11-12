@@ -54,8 +54,11 @@ def parse_cmd_line_args(args, kwargs):
 def extract_conn_str_from_env_vars():
     for key, value in os.environ.items():
         logging.info(f"{key}:{value}")
-        if key.endswith('CONN_STR'):
-            return value
+        try:
+            if key.endswith('CONN_STR'):
+                return value
+        except:
+            return None
 
 def create_cfg_dict(args):
     conn_str = extract_conn_str_from_env_vars()

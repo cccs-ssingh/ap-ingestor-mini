@@ -16,6 +16,7 @@ def create_spark_session(spark_cfg, app_name):
     spark_builder = SparkSession.builder \
         .appName(f"APA4b Ingestor-Mini: {app_name}") \
         .config("spark.ui.showConsoleProgress", "false") \
+        .config("spark.sql.debug.maxToStringFields", "1000")
         # .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
         # .config("spark.cores.max", int(spark_cfg['spark.executor.cores']) * int(spark_cfg['spark.executor.instances']))
 

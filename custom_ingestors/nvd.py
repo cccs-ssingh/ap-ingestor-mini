@@ -2,7 +2,7 @@ import logging
 from pyspark.sql.functions import col, to_json
 
 
-def apply_custom_rules(df):
+def apply_custom_rules(df, spark):
     logging.info(f' - formatting type -> column')
     for column_name in ['configurations', 'cveTags', 'metrics']:
         logging.info(f' - StringType() -> {column_name}')

@@ -153,7 +153,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     )
 
     # Manual adjustments
-    df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
+    df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'], spark)
 
     # Write the dataframe
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
@@ -185,7 +185,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('Metrics:')
     # logging.info(f'- {len(new_files)} file(s) -> {record_count} records: {format_size(total_size)} in {time_taken:.2f} seconds')
 
-def apply_custom_ingestor_rules(df, module_name):
+def apply_custom_ingestor_rules(df, module_name, spark):
     logging.info(f"")
     logging.info(f"Checking for custom ingestor file")
 
@@ -204,7 +204,7 @@ def apply_custom_ingestor_rules(df, module_name):
             # Check if the function apply_custom_rules exists in the module
             if hasattr(module, "apply_custom_rules"):
                 logging.info(" - applying custom rules to df")
-                df = module.apply_custom_rules(df)  # Pass df to the function if needed
+                df = module.apply_custom_rules(df, spark)  # Pass df to the function if needed
                 return df
             else:
                 logging.error(f"The function 'apply_custom_rules' does not exist in {module_name}.")

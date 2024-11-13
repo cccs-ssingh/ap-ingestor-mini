@@ -1,6 +1,5 @@
 import os
 import argparse
-import logging
 
 def parse_cmd_line_args(args, kwargs):
 
@@ -95,36 +94,17 @@ def create_cfg_dict(args):
         },
     }
 
-    # # Spark resources
-    # if config_dict['spark']:
-    #     # passed in as cmd line arg json string, unpack into dict
-    #     config_dict['spark'] = json.loads(config_dict['spark'])
-    # else:
-    #     # Set default values
-    #     config_dict['spark'] = {
-    #         'spark.executor.instances': '1',
-    #         'spark.executor.cores': '4',
-    #         'spark.executor.memory': '4g',
-    #         'spark.driver.memory': '4g',
-    #     }
-
     return config_dict
 
 def get_conn_str_from_vault():
     from hogwarts.auth.vault.vault_client import VaultClient
 
-    logging.info("Getting spellbooksecret from vault")
-
     vault = VaultClient()
     vault.login()
-
     group_name = 'APA4B-sg'
     secret_name = 'apdatalakeudatafeeds'
     s = vault.get_group_secret(group_name, secret_name)
-
-    # Key inside the secret
     conn_str = s.get("conn_str")
-    # conn_str is now the conn_str in the APA4B_SG_APDATALAKEUDATAFEEDS_CONN_STR secret
 
     return conn_str
 

@@ -173,8 +173,8 @@ def apply_custom_ingestor_rules(df, module_name):
 
 def populate_timeperiod_partition_column(df, partition_field, partition_value, partition_format):
     logging.info(f"")
-    logging.info(f"Populating partition column -> value")
-    logging.info(f"- {partition_field} -> {partition_value}")
+    logging.info(f"Populating partition 'column' -> value")
+    logging.info(f"- '{partition_field}' -> {partition_value}")
     df = df.withColumn(partition_field, to_date(lit(partition_value), partition_format))
     logging.info(f"- populated")
     return df

@@ -16,7 +16,7 @@ def create_spark_session(spark_cfg, app_name):
     spark_builder = SparkSession.builder \
         .appName(f"APA4b Ingestor-Mini: {app_name}") \
         .config("spark.ui.showConsoleProgress", "false") \
-        .config("spark.sql.debug.maxToStringFields", "1000")
+        .config("spark.sql.debug.maxToStringFields", "100")
         # .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
         # .config("spark.cores.max", int(spark_cfg['spark.executor.cores']) * int(spark_cfg['spark.executor.instances']))
 
@@ -203,12 +203,12 @@ def log_new_columns(table_fields, dataframe_fields):
 
 def log_changed_columns(table_fields, dataframe_fields):
     logging.info("")
-    logging.info("Checking for changed column data types")
+    logging.info("Checking for column data type discrepancies")
     changes_detected = False
 
     for field, data_type in dataframe_fields.items():
         if field in table_fields and table_fields[field] != data_type:
-            logging.info(f"- Column:{field} data-type discrepancy:")
+            logging.info(f"- Column:            {field}")
             logging.info(f"  -     Table type = {table_fields[field]}")
             logging.info(f"  - DataFrame type = {data_type}")
             changes_detected = True

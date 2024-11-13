@@ -38,9 +38,9 @@ def create_spark_session(spark_cfg, app_name):
 def log_spark_config(spark):
     # Extract and log relevant configuration settings
 
-    all_configs = spark.sparkContext.getConf().getAll()
-    for key, value in sorted(all_configs):
-        print(f"{key}: {value}")
+    # all_configs = spark.sparkContext.getConf().getAll()
+    # for key, value in sorted(all_configs):
+    #     print(f"{key}: {value}")
 
     # Access the Spark configuration
     conf = spark.sparkContext.getConf()

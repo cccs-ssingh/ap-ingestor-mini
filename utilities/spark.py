@@ -15,8 +15,8 @@ def create_spark_session(spark_cfg, app_name):
 
     spark_builder = SparkSession.builder \
         .appName(f"APA4b Ingestor-Mini: {app_name}") \
-        .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
         .config("spark.ui.showConsoleProgress", "false") \
+        # .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
         # .config("spark.cores.max", int(spark_cfg['spark.executor.cores']) * int(spark_cfg['spark.executor.instances']))
 
     # for key, value in spark_cfg.items():
@@ -44,7 +44,7 @@ def log_spark_config(spark):
 
     # Access the Spark configuration
     conf = spark.sparkContext.getConf()
-    logging.info("==== Spark Session Configuration ====")
+    logging.info("=====  Spark Session Configuration ====")
     logging.info(f"          App Name: {conf.get('spark.app.name')}")
     logging.info(f"            Master: {conf.get('spark.master')}")
     logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
@@ -56,7 +56,7 @@ def log_spark_config(spark):
     logging.info(f"Dynamic Allocation: {conf.get('spark.dynamicAllocation.enabled', 'Not Set')}")
     logging.info(f"   Memory Fraction: {conf.get('spark.memory.fraction', 'Not Set')}")
     logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
-    logging.info("=====================================")
+    logging.info("=======================================")
 
 # Read data based on the file type
 def read_data(spark, file_cfg, input_files):

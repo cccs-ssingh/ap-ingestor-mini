@@ -1,7 +1,6 @@
 import os
 import argparse
 import logging
-import json
 
 def parse_cmd_line_args(args, kwargs):
 
@@ -31,7 +30,7 @@ def parse_cmd_line_args(args, kwargs):
 
     # Spark
     arg_parser.add_argument('--spark_config', help="JSON string to represent spark config")
-    arg_parser.add_argument('--conf', help="SpellbookLapsOperator conf cmd-line-args")
+    # arg_parser.add_argument('--conf', help="SpellbookLapsOperator conf cmd-line-args")
 
     #  Kubernetes mode
     arg_parser.add_argument('--k8s_name_space', help="Kubernetes name space")

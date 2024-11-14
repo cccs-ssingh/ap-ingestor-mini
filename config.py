@@ -84,7 +84,8 @@ def create_cfg_dict(args):
             "namespace": args.iceberg_namespace,
             "table": {
                 "name": args.iceberg_table,
-                "location": f"abfss://{args.azure_container_output_name}@{storage_account_name}.dfs.core.windows.net/{args.azure_container_output_dir}/{args.iceberg_namespace}/{args.iceberg_table}"
+                "location": f"abfss://{args.azure_container_output_name}@{storage_account_name}.dfs.core.windows.net/"
+                            f"{args.azure_container_output_dir}/{args.iceberg_namespace}/{args.iceberg_table}"
             },
             "partition": {
                 "field": args.iceberg_partition_field,

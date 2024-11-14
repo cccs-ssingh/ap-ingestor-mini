@@ -26,14 +26,6 @@ def create_spark_session(spark_cfg, app_name):
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)
 
-    # if spark_cfg['k8s']['name_space']:
-    #     logging.info("- configuring spark for Kubernetes mode.")
-    #     spark_builder = spark_builder \
-    #         .config("spark.master", "k8s://https://kubernetes.default.svc") \
-    #         .config("spark.kubernetes.container.image", spark_cfg['k8s']['spark_image']) \
-    #         .config("spark.kubernetes.namespace", spark_cfg['k8s']['name_space']) \
-    #         .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
-
     return spark
 
 def log_spark_config(spark):
@@ -79,8 +71,7 @@ def read_data(spark, file_cfg, input_files):
         else:
             df = spark.read.json(input_files)
 
-    elif file_cfg['type'] == "xml":
-        # databricks library
+    elif file_cfg['type'] == "xml":  # databricks library
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
@@ -94,7 +85,7 @@ def read_data(spark, file_cfg, input_files):
     else:
         raise ValueError(f"Unsupported file type: {file_cfg['type']}")
 
-    logging.info(f" - successfully read data!")
+    logging.info(f"- successfully read data!")
     return df
 
 # Function to ingest raw data into an Iceberg table dynamically
@@ -142,6 +133,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('Metrics:')
     logging.info(f"-      records: {df.count():,}")
     logging.info(f"- processed in: {elapsed_time}s")
+
+    # End Spark Session
+    spark.stop()
     logging.info(f"====================================")
 
 

@@ -14,7 +14,7 @@ def run(*args, **kwargs):
     spark = create_spark_session(cfg['spark'], cfg['iceberg']['table']['name'])
 
     # Determine files tp process from Azure
-    files_to_process = determine_files_to_process(cfg['azure'], cfg['file']['type'])
+    files_to_process = determine_files_to_process(cfg['azure'], cfg['file'])
     if not files_to_process:
         logging.warning("No files found in the specified directory.")
         logging.warning("")

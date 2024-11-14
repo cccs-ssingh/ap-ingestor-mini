@@ -26,14 +26,11 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--file_type', required=True, help="[csv, json, xml, avro]")
     arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format ")
     arg_parser.add_argument('--json_multiline', action='store_true', help="if json is multiline separated")
+    arg_parser.add_argument('--log_files', action='store_true', help="log files to be processed")
 
     # Spark
     arg_parser.add_argument('--spark_config', help="JSON string to represent spark config")
-    # arg_parser.add_argument('--conf', help="SpellbookLapsOperator conf cmd-line-args")
 
-    #  Kubernetes mode
-    arg_parser.add_argument('--k8s_name_space', help="Kubernetes name space")
-    arg_parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
 
     if kwargs and "run_args" in kwargs["context"]:
         arg_parser = arg_parser.parse_args(kwargs["context"]["run_args"])
@@ -62,6 +59,7 @@ def create_cfg_dict(args):
             "type": args.file_type,
             "json_multiline": args.json_multiline,
             "xml_row_tag": args.xml_row_tag,
+            "log_files": args.log_files,
         },
         "azure": {
             "storage_account": {

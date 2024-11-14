@@ -25,22 +25,22 @@ def list_blobs_in_directory(conn_str, container_name, container_dir):
 
     return blob_urls
 
-def filter_urls_by_file_type(blob_urls, file_type):
+def filter_urls_by_file_type(blob_urls, cfg_file):
     # Filter expected file type
-    blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type)]
-    logging.info(f"- {len(blob_urls)} blobs of type: {file_type}")
+    blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(cfg_file['type'])]
+    logging.info(f"- {len(blob_urls)} blobs of type: {cfg_file['type']}")
 
-    # # Print files to process if needed
-    # for blob_url in blob_urls:
-    #     logging.info(f' - {blob_url}')
+    if cfg_file['log_files'] :
+        for blob_url in blob_urls:
+            logging.info(f' - {blob_url}')
 
     return blob_urls
 
-def determine_files_to_process(azure_cfg, file_type):
+def determine_files_to_process(azure_cfg, cfg_file):
     azure_blob_urls = list_blobs_in_directory(
         azure_cfg['storage_account']['conn_str'],
         azure_cfg['container']['input']['name'],
         azure_cfg['container']['input']['dir'],
     )
-    azure_blob_urls_filtered = filter_urls_by_file_type(azure_blob_urls, file_type)
+    azure_blob_urls_filtered = filter_urls_by_file_type(azure_blob_urls, cfg_file)
     return azure_blob_urls_filtered

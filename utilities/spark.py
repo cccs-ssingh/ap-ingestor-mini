@@ -71,7 +71,7 @@ def read_data(spark, file_cfg, input_files):
         else:
             df = spark.read.json(input_files)
 
-    elif file_cfg['type'] == "xml":  # databricks library
+    elif file_cfg['type'] == "xml":  # using databricks library
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 

@@ -76,11 +76,7 @@ def read_data(spark, file_cfg, input_files):
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
         logging.info(f"- xml_row_tag: {file_cfg['xml_row_tag']}")
-        df = (
-            spark.read.format("xml")
-            .option("rowTag", file_cfg["xml_row_tag"])
-            .load(input_files)
-        )
+        df = spark.read.format("xml").option("rowTag", file_cfg["xml_row_tag"]).load(input_files)
 
     else:
         raise ValueError(f"Unsupported file type: {file_cfg['type']}")

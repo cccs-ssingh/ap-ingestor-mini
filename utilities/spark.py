@@ -10,7 +10,7 @@ from pyspark.sql.types import *
 
 
 # Function to create Spark session with Iceberg
-def create_spark_session(spark_cfg, app_name):
+def create_spark_session(app_name):
     logging.debug(f"")
     logging.debug("Creating Spark session")
 
@@ -18,11 +18,6 @@ def create_spark_session(spark_cfg, app_name):
         .appName(f"APA4b Ingestor-Mini: {app_name}") \
         .config("spark.ui.showConsoleProgress", "false") \
         .config("spark.sql.debug.maxToStringFields", "100")
-        # .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
-        # .config("spark.cores.max", int(spark_cfg['spark.executor.cores']) * int(spark_cfg['spark.executor.instances']))
-
-    # for key, value in spark_cfg.items():
-    #     spark_builder.config(key, value)
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)

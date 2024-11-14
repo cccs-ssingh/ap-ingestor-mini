@@ -83,7 +83,6 @@ def read_data(spark, file_cfg, input_files):
             spark.read.format("xml")
             .option("rowTag", file_cfg["xml_row_tag"])
             .load(f"{input_dir}/*.xml")
-            # .load(input_files)
         )
 
     else:
@@ -116,6 +115,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Write the dataframe
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
+
     if not spark.catalog.tableExists(iceberg_table):
         # New Iceberg table
         create_new_iceberg_table(
@@ -123,8 +123,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             cfg_iceberg['table']['location'],
             cfg_iceberg['partition']['field']
         )
-    else:
-        # Old Iceberg Table
+
+    else: # Existing Iceberg Table
         merge_into_existing_table(
             spark, df, iceberg_table,
             cfg_iceberg['partition']['field'],
@@ -231,10 +231,12 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
     logging.info('')
     logging.info(f"Appending to: '{iceberg_table}'")
     logging.info(f"- schema evolution enabled (mergeSchema)")
+
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
         .option("mergeSchema", "true") \
         .option("check-ordering", "false") \
         .partitionedBy(partition_field) \
         .append()
+
     logging.info('- appended!')

@@ -5,7 +5,7 @@ import importlib
 
 from pyspark.sql import SparkSession
 from utilities.iceberg import *
-from pyspark.sql.functions import lit, to_date
+from pyspark.sql.functions import lit, to_date, first
 
 
 # Function to create Spark session with Iceberg
@@ -76,12 +76,13 @@ def read_data(spark, file_cfg, input_files):
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
         logging.info(f"- xml_row_tag: '{file_cfg['xml_row_tag']}'")
-        yyyy_mm_dd_hh_str = "2024/09/20/00"
-        input_dir = f"kaspersky_labs/threat_intelligence/iocs/{yyyy_mm_dd_hh_str}"
+        first_file = input_files[0]
+        input_dir = first_file.rsplit('/', 1)[0]
+
         df = (
             spark.read.format("xml")
             .option("rowTag", file_cfg["xml_row_tag"])
-            .load(f"abfss://data@apdatalakeudatafeeds.dfs.core.windows.net/{input_dir}/*.xml")
+            .load(f"{input_dir}/*.xml")
             # .load(input_files)
         )
 

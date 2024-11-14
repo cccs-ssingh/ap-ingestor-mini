@@ -75,8 +75,15 @@ def read_data(spark, file_cfg, input_files):
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
-        logging.info(f"- xml_row_tag: {file_cfg['xml_row_tag']}")
-        df = spark.read.format("xml").option("rowTag", file_cfg["xml_row_tag"]).load(input_files)
+        logging.info(f"- xml_row_tag: '{file_cfg['xml_row_tag']}'")
+        yyyy_mm_dd_hh_str = "2024/09/20/00"
+        input_dir = f"kaspersky_labs/threat_intelligence/iocs/{yyyy_mm_dd_hh_str}"
+        df = (
+            spark.read.format("xml")
+            .option("rowTag", file_cfg["xml_row_tag"])
+            .load(f"abfss://data@apdatalakeudatafeeds.dfs.core.windows.net/{input_dir}/*.xml")
+            # .load(input_files)
+        )
 
     else:
         raise ValueError(f"Unsupported file type: {file_cfg['type']}")

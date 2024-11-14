@@ -146,7 +146,7 @@ def apply_custom_ingestor_rules(df, module_name):
 
     if os.path.exists(custom_ingestor_path):
         logging.info(f"")
-        logging.info(f"Custom ingestor exits: '{custom_ingestor_path}'")
+        logging.info(f"Custom ingestor exits: 'custom_ingestors/{module_name}.py'")
 
         # Add the custom_ingestors directory to sys.path, not the full file path
         sys.path.insert(0, custom_ingestors_dir)

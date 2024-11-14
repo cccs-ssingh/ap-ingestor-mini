@@ -6,11 +6,11 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
 
     # Azure
-    #   Input
+    # - Input
     arg_parser.add_argument('--timeperiod_to_process', required=True, help="ie. yyyy/mm/dd/hh")
     arg_parser.add_argument('--azure_container_input_name', default="data", help="Input data container name")
     arg_parser.add_argument('--azure_container_input_dir', required=True, help="Raw data directory in Azure Storage")
-    #   Output
+    # - Output
     arg_parser.add_argument('--azure_container_output_name', default="warehouse", help="Input data container name")
     arg_parser.add_argument('--azure_container_output_dir', default="iceberg", help="Warehouse directory for Iceberg tables")
 
@@ -27,10 +27,6 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format ")
     arg_parser.add_argument('--json_multiline', action='store_true', help="if json is multiline separated")
     arg_parser.add_argument('--log_files', action='store_true', help="log files to be processed")
-
-    # Spark
-    arg_parser.add_argument('--spark_config', help="JSON string to represent spark config")
-
 
     if kwargs and "run_args" in kwargs["context"]:
         arg_parser = arg_parser.parse_args(kwargs["context"]["run_args"])
@@ -54,7 +50,6 @@ def create_cfg_dict(args):
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     config_dict = {
-        "spark": args.spark_config,
         "file": {
             "type": args.file_type,
             "json_multiline": args.json_multiline,

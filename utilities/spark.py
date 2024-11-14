@@ -1,11 +1,10 @@
 import time
 import os
-import sys
 import importlib
 
 from utilities.iceberg import *
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import lit, to_date
+from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
 
@@ -195,9 +194,7 @@ def log_new_columns(table_fields, dataframe_fields):
     else:
         logging.info("- no new columns")
 
-def log_changed_columns(table_fields, dataframe_fields, prefix=""):
-    logging.info("")
-    logging.info("Checking for column data type discrepancies")
+def log_changed_columns_and_sub_fields(table_fields, dataframe_fields, prefix=""):
     changes_detected = False
 
     for field, data_type in dataframe_fields.items():
@@ -208,7 +205,7 @@ def log_changed_columns(table_fields, dataframe_fields, prefix=""):
 
             if isinstance(data_type, StructType) and isinstance(table_data_type, StructType):
                 # Recursively check nested fields
-                nested_changes = log_changed_columns(
+                nested_changes = log_changed_columns_and_sub_fields(
                     {f.name: f.dataType for f in table_data_type.fields},
                     {f.name: f.dataType for f in data_type.fields},
                     full_field_name
@@ -234,6 +231,63 @@ def log_changed_columns(table_fields, dataframe_fields, prefix=""):
 
     return changes_detected
 
+def log_and_apply_schema_changes(df: DataFrame, table_schema: StructType) -> DataFrame:
+    def adjust_schema(df: DataFrame, table_fields: dict, dataframe_fields: dict, prefix="") -> DataFrame:
+        changes_detected = False
+
+        for field, data_type in dataframe_fields.items():
+            full_field_name = f"{prefix}.{field}" if prefix else field
+
+            if field in table_fields:
+                table_data_type = table_fields[field]
+
+                if isinstance(data_type, StructType) and isinstance(table_data_type, StructType):
+                    # Recursively check nested fields
+                    nested_df = df.withColumn(field, col(field))
+                    nested_df = adjust_schema(
+                        nested_df,
+                        {f.name: f.dataType for f in table_data_type.fields},
+                        {f.name: f.dataType for f in data_type.fields},
+                        full_field_name
+                    )
+                    df = df.withColumn(field, nested_df[field])
+                elif isinstance(data_type, ArrayType) and isinstance(table_data_type, ArrayType):
+                    # Check element types for arrays
+                    if data_type.elementType != table_data_type.elementType:
+                        logging.info(f"- Column:            {full_field_name}")
+                        logging.info(f"  -     Table type = {table_data_type}")
+                        logging.info(f"  - DataFrame type = {data_type}")
+                        df = df.withColumn(full_field_name, to_json(col(full_field_name)))
+                        changes_detected = True
+                elif isinstance(data_type, MapType) and isinstance(table_data_type, MapType):
+                    # Check key and value types for maps
+                    if data_type.keyType != table_data_type.keyType or data_type.valueType != table_data_type.valueType:
+                        logging.info(f"- Column:            {full_field_name}")
+                        logging.info(f"  -     Table type = {table_data_type}")
+                        logging.info(f"  - DataFrame type = {data_type}")
+                        df = df.withColumn(full_field_name, col(full_field_name).cast(table_data_type))
+                        changes_detected = True
+                else:
+                    if table_data_type != data_type:
+                        logging.info(f"- Column:            {full_field_name}")
+                        logging.info(f"  -     Table type = {table_data_type}")
+                        logging.info(f"  - DataFrame type = {data_type}")
+                        df = df.withColumn(full_field_name, col(full_field_name).cast(table_data_type))
+                        changes_detected = True
+
+        if not changes_detected:
+            logging.info("- all column datatypes match")
+        return df
+
+    # Convert schemas to dictionaries for easier processing
+    table_fields = {f.name: f.dataType for f in table_schema.fields}
+    dataframe_fields = {f.name: f.dataType for f in df.schema.fields}
+
+    # Adjust the DataFrame schema to match the table schema
+    df = adjust_schema(df, table_fields, dataframe_fields)
+    return df
+
+
 def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_location):
     # Schemas
     table_schema = spark.table(iceberg_table).schema
@@ -244,7 +298,10 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
     log_new_columns(table_fields, dataframe_fields)
 
     # Identify columns with changed formats
-    log_changed_columns(table_fields, dataframe_fields)
+    logging.info("")
+    logging.info("Checking for data type discrepancies")
+    log_changed_columns_and_sub_fields(table_fields, dataframe_fields)
+    df = log_and_apply_schema_changes(df, table_schema)
 
     # Append to existing table
     logging.info('')

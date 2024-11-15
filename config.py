@@ -1,18 +1,16 @@
 import os
 import argparse
-import logging
-import json
 
 def parse_cmd_line_args(args, kwargs):
 
     arg_parser = argparse.ArgumentParser(description="Ingest data from Azure Storage to Iceberg table")
 
     # Azure
-    #   Input
+    # - Input
     arg_parser.add_argument('--timeperiod_to_process', required=True, help="ie. yyyy/mm/dd/hh")
     arg_parser.add_argument('--azure_container_input_name', default="data", help="Input data container name")
     arg_parser.add_argument('--azure_container_input_dir', required=True, help="Raw data directory in Azure Storage")
-    #   Output
+    # - Output
     arg_parser.add_argument('--azure_container_output_name', default="warehouse", help="Input data container name")
     arg_parser.add_argument('--azure_container_output_dir', default="iceberg", help="Warehouse directory for Iceberg tables")
 
@@ -28,14 +26,7 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--file_type', required=True, help="[csv, json, xml, avro]")
     arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format ")
     arg_parser.add_argument('--json_multiline', action='store_true', help="if json is multiline separated")
-
-    # Spark
-    arg_parser.add_argument('--spark_config', help="JSON string to represent spark config")
-    arg_parser.add_argument('--conf', help="SpellbookLapsOperator conf cmd-line-args")
-
-    #  Kubernetes mode
-    arg_parser.add_argument('--k8s_name_space', help="Kubernetes name space")
-    arg_parser.add_argument('--k8s_spark_image', help="Kubernetes mode for Spark")
+    arg_parser.add_argument('--log_files', action='store_true', help="log files to be processed")
 
     if kwargs and "run_args" in kwargs["context"]:
         arg_parser = arg_parser.parse_args(kwargs["context"]["run_args"])
@@ -59,11 +50,11 @@ def create_cfg_dict(args):
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     config_dict = {
-        "spark": args.spark_config,
         "file": {
             "type": args.file_type,
             "json_multiline": args.json_multiline,
             "xml_row_tag": args.xml_row_tag,
+            "log_files": args.log_files,
         },
         "azure": {
             "storage_account": {
@@ -86,7 +77,8 @@ def create_cfg_dict(args):
             "namespace": args.iceberg_namespace,
             "table": {
                 "name": args.iceberg_table,
-                "location": f"abfss://{args.azure_container_output_name}@{storage_account_name}.dfs.core.windows.net/{args.azure_container_output_dir}/{args.iceberg_namespace}/{args.iceberg_table}"
+                "location": f"abfss://{args.azure_container_output_name}@{storage_account_name}.dfs.core.windows.net/"
+                            f"{args.azure_container_output_dir}/{args.iceberg_namespace}/{args.iceberg_table}"
             },
             "partition": {
                 "field": args.iceberg_partition_field,
@@ -96,36 +88,17 @@ def create_cfg_dict(args):
         },
     }
 
-    # Spark resources
-    if config_dict['spark']:
-        # passed in as cmd line arg json string, unpack into dict
-        config_dict['spark'] = json.loads(config_dict['spark'])
-    else:
-        # Set default values
-        config_dict['spark'] = {
-            'spark.executor.instances': '1',
-            'spark.executor.cores': '4',
-            'spark.executor.memory': '4g',
-            'spark.driver.memory': '4g',
-        }
-
     return config_dict
 
 def get_conn_str_from_vault():
     from hogwarts.auth.vault.vault_client import VaultClient
 
-    logging.info("Getting spellbooksecret from vault")
-
     vault = VaultClient()
     vault.login()
-
     group_name = 'APA4B-sg'
     secret_name = 'apdatalakeudatafeeds'
     s = vault.get_group_secret(group_name, secret_name)
-
-    # Key inside the secret
     conn_str = s.get("conn_str")
-    # conn_str is now the conn_str in the APA4B_SG_APDATALAKEUDATAFEEDS_CONN_STR secret
 
     return conn_str
 

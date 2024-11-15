@@ -1,38 +1,25 @@
 import time
 import os
-import json
-import sys
 import importlib
 
-from pyspark.sql import SparkSession
 from utilities.iceberg import *
-from pyspark.sql.functions import lit, to_date
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
 
 
 # Function to create Spark session with Iceberg
-def create_spark_session(spark_cfg, app_name):
+def create_spark_session(app_name):
     logging.debug(f"")
     logging.debug("Creating Spark session")
 
     spark_builder = SparkSession.builder \
         .appName(f"APA4b Ingestor-Mini: {app_name}") \
-        .master("spark://ver-1-spark-master-0.ver-1-spark-headless.spark.svc.cluster.local:7077") \
         .config("spark.ui.showConsoleProgress", "false") \
-        .config("spark.cores.max", int(spark_cfg['spark.executor.cores']) * int(spark_cfg['spark.executor.instances']))
-
-    for key, value in spark_cfg.items():
-        spark_builder.config(key, value)
+        .config("spark.sql.debug.maxToStringFields", "100")
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)
-
-    # if spark_cfg['k8s']['name_space']:
-    #     logging.info("- configuring spark for Kubernetes mode.")
-    #     spark_builder = spark_builder \
-    #         .config("spark.master", "k8s://https://kubernetes.default.svc") \
-    #         .config("spark.kubernetes.container.image", spark_cfg['k8s']['spark_image']) \
-    #         .config("spark.kubernetes.namespace", spark_cfg['k8s']['name_space']) \
-    #         .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark")
 
     return spark
 
@@ -45,7 +32,7 @@ def log_spark_config(spark):
 
     # Access the Spark configuration
     conf = spark.sparkContext.getConf()
-    logging.info("==== Spark Session Configuration ====")
+    logging.info("=====  Spark Session Configuration ====")
     logging.info(f"          App Name: {conf.get('spark.app.name')}")
     logging.info(f"            Master: {conf.get('spark.master')}")
     logging.info(f"     Driver Memory: {conf.get('spark.driver.memory', 'Not Set')}")
@@ -57,7 +44,7 @@ def log_spark_config(spark):
     logging.info(f"Dynamic Allocation: {conf.get('spark.dynamicAllocation.enabled', 'Not Set')}")
     logging.info(f"   Memory Fraction: {conf.get('spark.memory.fraction', 'Not Set')}")
     logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
-    logging.info("=====================================")
+    logging.info("=======================================")
 
 # Read data based on the file type
 def read_data(spark, file_cfg, input_files):
@@ -79,22 +66,24 @@ def read_data(spark, file_cfg, input_files):
         else:
             df = spark.read.json(input_files)
 
-    elif file_cfg['type'] == "xml":
-        # databricks library
+    elif file_cfg['type'] == "xml":  # using databricks library
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
-        logging.info(f"- xml_row_tag: {file_cfg['xml_row_tag']}")
+        logging.info(f"- xml_row_tag: '{file_cfg['xml_row_tag']}'")
+        first_file = input_files[0]
+        input_dir = first_file.rsplit('/', 1)[0]
+
         df = (
             spark.read.format("xml")
             .option("rowTag", file_cfg["xml_row_tag"])
-            .load(input_files)
+            .load(f"{input_dir}/*.xml")
         )
 
     else:
         raise ValueError(f"Unsupported file type: {file_cfg['type']}")
 
-    logging.info(f" - successfully read data!")
+    logging.info(f"- successfully read data!")
     return df
 
 # Function to ingest raw data into an Iceberg table dynamically
@@ -121,6 +110,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Write the dataframe
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
+
     if not spark.catalog.tableExists(iceberg_table):
         # New Iceberg table
         create_new_iceberg_table(
@@ -128,8 +118,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             cfg_iceberg['table']['location'],
             cfg_iceberg['partition']['field']
         )
-    else:
-        # Old Iceberg Table
+
+    else: # Existing Iceberg Table
         merge_into_existing_table(
             spark, df, iceberg_table,
             cfg_iceberg['partition']['field'],
@@ -142,6 +132,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info('Metrics:')
     logging.info(f"-      records: {df.count():,}")
     logging.info(f"- processed in: {elapsed_time}s")
+
+    # End Spark Session
+    spark.stop()
     logging.info(f"====================================")
 
 
@@ -153,7 +146,7 @@ def apply_custom_ingestor_rules(df, module_name):
 
     if os.path.exists(custom_ingestor_path):
         logging.info(f"")
-        logging.info(f"Custom ingestor exits: '{custom_ingestor_path}'")
+        logging.info(f"Custom ingestor exits: 'custom_ingestors/{module_name}.py'")
 
         # Add the custom_ingestors directory to sys.path, not the full file path
         sys.path.insert(0, custom_ingestors_dir)
@@ -174,8 +167,8 @@ def apply_custom_ingestor_rules(df, module_name):
 
 def populate_timeperiod_partition_column(df, partition_field, partition_value, partition_format):
     logging.info(f"")
-    logging.info(f"Populating partition column -> value")
-    logging.info(f"- {partition_field} -> {partition_value}")
+    logging.info(f"Populating partition 'column' -> value")
+    logging.info(f"- '{partition_field}' -> {partition_value}")
     df = df.withColumn(partition_field, to_date(lit(partition_value), partition_format))
     logging.info(f"- populated")
     return df
@@ -203,18 +196,55 @@ def log_new_columns(table_fields, dataframe_fields):
 
 def log_changed_columns(table_fields, dataframe_fields):
     logging.info("")
-    logging.info("Checking for changed column data types")
+    logging.info("Checking for column data type discrepancies")
     changes_detected = False
 
     for field, data_type in dataframe_fields.items():
         if field in table_fields and table_fields[field] != data_type:
-            logging.info(f"- Column:{field} data-type discrepancy:")
+            logging.info(f"- Column:            {field}")
             logging.info(f"  -     Table type = {table_fields[field]}")
             logging.info(f"  - DataFrame type = {data_type}")
             changes_detected = True
 
     if not changes_detected:
         logging.info("- all column datatypes match")
+    return changes_detected
+
+def log_changed_columns_and_sub_fields(table_fields, dataframe_fields, prefix=""):
+    changes_detected = False
+
+    for field, data_type in dataframe_fields.items():
+        full_field_name = f"{prefix}.{field}" if prefix else field
+
+        if field in table_fields:
+            table_data_type = table_fields[field]
+
+            if isinstance(data_type, StructType) and isinstance(table_data_type, StructType):
+                # Recursively check nested fields
+                nested_changes = log_changed_columns_and_sub_fields(
+                    {f.name: f.dataType for f in table_data_type.fields},
+                    {f.name: f.dataType for f in data_type.fields},
+                    full_field_name
+                )
+                if nested_changes:
+                    changes_detected = True
+            elif isinstance(data_type, ArrayType) and isinstance(table_data_type, ArrayType):
+                # Check element types for arrays
+                if data_type.elementType != table_data_type.elementType:
+                    logging.info(f"- Column:            {full_field_name}")
+                    logging.info(f"  -     Table type = {table_data_type}")
+                    logging.info(f"  - DataFrame type = {data_type}")
+                    changes_detected = True
+            else:
+                if table_data_type != data_type:
+                    logging.info(f"- Column:            {full_field_name}")
+                    logging.info(f"  -     Table type = {table_data_type}")
+                    logging.info(f"  - DataFrame type = {data_type}")
+                    changes_detected = True
+
+    if not changes_detected:
+        logging.info("- all column datatypes match")
+
     return changes_detected
 
 def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_location):
@@ -227,16 +257,20 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
     log_new_columns(table_fields, dataframe_fields)
 
     # Identify columns with changed formats
-    log_changed_columns(table_fields, dataframe_fields)
+    logging.info("")
+    logging.info("Checking for data type discrepancies")
+    log_changed_columns_and_sub_fields(table_fields, dataframe_fields)
 
     # Append to existing table
     logging.info('')
     logging.info(f"Appending to: '{iceberg_table}'")
     logging.info(f"- schema evolution enabled (mergeSchema)")
+
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
         .option("mergeSchema", "true") \
         .option("check-ordering", "false") \
         .partitionedBy(partition_field) \
         .append()
+
     logging.info('- appended!')

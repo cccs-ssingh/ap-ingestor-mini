@@ -46,8 +46,8 @@ def extract_conn_str_from_env_vars():
 
 def create_cfg_dict(args):
     conn_str = extract_conn_str_from_env_vars()
-    if not conn_str:
-        conn_str = get_conn_str_from_vault()
+    # if not conn_str:
+    #     conn_str = get_conn_str_from_vault()
     storage_account_name, storage_account_key = parse_connection_string(conn_str)
 
     config_dict = {

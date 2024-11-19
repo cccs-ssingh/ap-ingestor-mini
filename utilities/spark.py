@@ -5,7 +5,6 @@ import importlib
 from utilities.iceberg import *
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
-from pyspark.sql.types import *
 
 
 # Function to create Spark session with Iceberg

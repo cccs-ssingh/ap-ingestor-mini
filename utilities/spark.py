@@ -210,43 +210,6 @@ def log_changed_columns(table_fields, dataframe_fields):
         logging.info("- all column datatypes match")
     return changes_detected
 
-def log_changed_columns_and_sub_fields(table_fields, dataframe_fields, prefix=""):
-    changes_detected = False
-
-    for field, data_type in dataframe_fields.items():
-        full_field_name = f"{prefix}.{field}" if prefix else field
-
-        if field in table_fields:
-            table_data_type = table_fields[field]
-
-            if isinstance(data_type, StructType) and isinstance(table_data_type, StructType):
-                # Recursively check nested fields
-                nested_changes = log_changed_columns_and_sub_fields(
-                    {f.name: f.dataType for f in table_data_type.fields},
-                    {f.name: f.dataType for f in data_type.fields},
-                    full_field_name
-                )
-                if nested_changes:
-                    changes_detected = True
-            elif isinstance(data_type, ArrayType) and isinstance(table_data_type, ArrayType):
-                # Check element types for arrays
-                if data_type.elementType != table_data_type.elementType:
-                    logging.info(f"- Column:            {full_field_name}")
-                    logging.info(f"  -     Table type = {table_data_type}")
-                    logging.info(f"  - DataFrame type = {data_type}")
-                    changes_detected = True
-            else:
-                if table_data_type != data_type:
-                    logging.info(f"- Column:            {full_field_name}")
-                    logging.info(f"  -     Table type = {table_data_type}")
-                    logging.info(f"  - DataFrame type = {data_type}")
-                    changes_detected = True
-
-    if not changes_detected:
-        logging.info("- all column datatypes match")
-
-    return changes_detected
-
 def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_location):
     # Schemas
     table_schema = spark.table(iceberg_table).schema
@@ -255,11 +218,6 @@ def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_l
 
     # Log new columns - no action needed as merge-schema option handles this
     log_new_columns(table_fields, dataframe_fields)
-
-    # Identify columns with changed formats
-    logging.info("")
-    logging.info("Checking for data type discrepancies")
-    log_changed_columns_and_sub_fields(table_fields, dataframe_fields)
 
     # Append to existing table
     logging.info('')

@@ -1,5 +1,6 @@
 import os
 import argparse
+import logging
 
 def parse_cmd_line_args(args, kwargs):
 
@@ -92,6 +93,8 @@ def create_cfg_dict(args):
 
 def get_conn_str_from_vault():
     from hogwarts.auth.vault.vault_client import VaultClient
+    logging.error(f"No azure connection string set as env var")
+    logging.error(f"- retrieving connection string via hogwarts.auth.vault.vault_client library")
 
     vault = VaultClient()
     vault.login()

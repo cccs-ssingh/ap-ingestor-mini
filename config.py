@@ -22,6 +22,7 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", help="Column to partition with")
     arg_parser.add_argument('--iceberg_partition_value', help="value to partition by: yyyy/mm/dd/hh etc")
     arg_parser.add_argument('--iceberg_partition_format', required=True, help="partitioning format yyyy/MM/dd")
+    arg_parser.add_argument('--iceberg_write_mode', default="append", help="spark write mode: append w/ mergeSchema or overwrite", choices=['append', 'overwrite'])
 
     # File Specific details
     arg_parser.add_argument('--file_type', required=True, help="[csv, json, xml, avro]")
@@ -85,7 +86,8 @@ def create_cfg_dict(args):
                 "field": args.iceberg_partition_field,
                 "format": args.iceberg_partition_format,
                 "value": args.timeperiod_to_process,
-            }
+            },
+            "write_mode": args.iceberg_write_mode,
         },
     }
 

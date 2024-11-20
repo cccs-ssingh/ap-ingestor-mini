@@ -119,11 +119,19 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         )
 
     else: # Existing Iceberg Table
-        merge_into_existing_table(
-            spark, df, iceberg_table,
-            cfg_iceberg['partition']['field'],
-            cfg_iceberg['table']['location']
-        )
+        # log_new_columns(spark, df, iceberg_table)
+        if cfg_iceberg['write_mode'] == 'overwrite':
+            overwrite_existing_table(
+                df, iceberg_table,
+                cfg_iceberg['partition']['field'],
+                cfg_iceberg['table']['location']
+            )
+        else:
+            merge_into_existing_table(
+                df, iceberg_table,
+                cfg_iceberg['partition']['field'],
+                cfg_iceberg['table']['location']
+            )
 
     # Logs
     elapsed_time = seconds_to_hh_mm_ss(time.time() - start_time)
@@ -183,9 +191,15 @@ def create_new_iceberg_table(df, iceberg_table, table_location, partition_field)
         .create()
     logging.info(f"- created: {iceberg_table}")
 
-def log_new_columns(table_fields, dataframe_fields):
+def log_new_columns(spark, df, iceberg_table):
     logging.info("")
     logging.info("Checking for new columns in the dataframe")
+
+    # Schemas
+    table_schema = spark.table(iceberg_table).schema
+    table_fields = {field.name: field.dataType for field in table_schema.fields}
+    dataframe_fields = {field.name: field.dataType for field in df.schema.fields}
+
     new_columns_in_dataframe = {name: datatype for name, datatype in dataframe_fields.items() if name not in table_fields}
     if new_columns_in_dataframe:
         for field, data_type in new_columns_in_dataframe.items():
@@ -209,15 +223,19 @@ def log_changed_columns(table_fields, dataframe_fields):
         logging.info("- all column datatypes match")
     return changes_detected
 
-def merge_into_existing_table(spark, df, iceberg_table, partition_field, table_location):
-    # Schemas
-    table_schema = spark.table(iceberg_table).schema
-    table_fields =     {field.name: field.dataType for field in table_schema.fields}
-    dataframe_fields = {field.name: field.dataType for field in df.schema.fields}
+def overwrite_existing_table(df, iceberg_table, partition_field, table_location):
+    # Overwrite existing table
+    logging.info('')
+    logging.info(f"Overwriting existing table: '{iceberg_table}'")
 
-    # Log new columns - no action needed as merge-schema option handles this
-    log_new_columns(table_fields, dataframe_fields)
+    df.writeTo(iceberg_table) \
+        .tableProperty("location", table_location) \
+        .partitionedBy(partition_field) \
+        .overwrite()
 
+    logging.info('- overwritten!')
+
+def merge_into_existing_table(df, iceberg_table, partition_field, table_location):
     # Append to existing table
     logging.info('')
     logging.info(f"Appending to: '{iceberg_table}'")

@@ -106,16 +106,14 @@ def get_conn_str_from_vault():
     return conn_str
 
 def parse_connection_string(conn_str):
-    """
-    Parse the Azure connection string to extract the AccountName and AccountKey.
-    """
-    # Split the connection string by semicolons to get the individual key-value pairs
-    try:
-        conn_dict = dict(item.split("=", 1) for item in conn_str.split(";"))
-        account_name = conn_dict.get("AccountName")
-        account_key = conn_dict.get("AccountKey")
-        return account_name, account_key
-    except Exception as e:
-        logging.error(e)
+    """Parse the Azure connection string to extract the AccountName and AccountKey. """
+
+    if not conn_str:
         logging.error("Azure storage account connection string not provided as an Env Var")
         exit(1)
+
+    # Split the connection string by semicolons to get the individual key-value pairs
+    conn_dict = dict(item.split("=", 1) for item in conn_str.split(";"))
+    account_name = conn_dict.get("AccountName")
+    account_key = conn_dict.get("AccountKey")
+    return account_name, account_key

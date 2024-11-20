@@ -124,6 +124,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             overwrite_existing_table(
                 df, iceberg_table,
                 cfg_iceberg['partition']['field'],
+                cfg_iceberg['partition']['value'],
                 cfg_iceberg['table']['location']
             )
         else:
@@ -223,13 +224,15 @@ def log_changed_columns(table_fields, dataframe_fields):
         logging.info("- all column datatypes match")
     return changes_detected
 
-def overwrite_existing_table(df, iceberg_table, partition_field, table_location):
+def overwrite_existing_table(df, iceberg_table, partition_field, partition_value, table_location):
     # Overwrite existing table
     logging.info('')
     logging.info(f"Overwriting existing table: '{iceberg_table}'")
 
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
+        .partitionedBy(partition_field) \
+        .overwrite(col(partition_field) == partition_value) \
         .overwrite()
 
     logging.info('- overwritten!')

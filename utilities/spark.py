@@ -231,7 +231,7 @@ def overwrite_existing_table(df, iceberg_table, partition_field, partition_value
 
     df.write.format("iceberg") \
         .mode("overwrite") \
-        .save("table_location")
+        .save(table_location)
 
     logging.info('- overwritten!')
 

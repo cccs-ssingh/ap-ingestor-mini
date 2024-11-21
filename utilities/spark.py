@@ -122,6 +122,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     else: # Existing Iceberg Table
         logging.info(f"- table found!")
+
         if cfg_iceberg['write_mode'] == 'overwrite':
             overwrite_existing_table(
                 df, iceberg_table,
@@ -137,14 +138,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
                 cfg_iceberg['table']['location']
             )
 
-    # Logs
-    elapsed_time = seconds_to_hh_mm_ss(time.time() - start_time)
-    logging.info('')
-    logging.info('Metrics:')
-    logging.info(f"-      records: {df.count():,}")
-    logging.info(f"- processed in: {elapsed_time}s")
-
     # End Spark Session
+    log_metrics(df, start_time)
     spark.stop()
     logging.info(f"====================================")
 
@@ -228,7 +223,9 @@ def log_changed_columns(table_fields, dataframe_fields):
     return changes_detected
 
 def overwrite_existing_table(df, iceberg_table, partition_field, partition_value, table_location):
+    logging.info("- iceberg_write_mode set to 'overwrite'")
     logging.info('- overwriting existing table')
+
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
         .partitionedBy(partition_field) \
@@ -248,3 +245,10 @@ def merge_into_existing_table(df, iceberg_table, partition_field, table_location
         .append()
 
     logging.info('- appended!')
+
+def log_metrics(df, start_time):
+    elapsed_time = seconds_to_hh_mm_ss(time.time() - start_time)
+    logging.info('')
+    logging.info('Metrics:')
+    logging.info(f"-      records: {df.count():,}")
+    logging.info(f"- processed in: {elapsed_time}s")

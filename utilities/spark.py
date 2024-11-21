@@ -121,6 +121,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         )
 
     else: # Existing Iceberg Table
+        logging.info(f"- table found!")
         if cfg_iceberg['write_mode'] == 'overwrite':
             overwrite_existing_table(
                 df, iceberg_table,
@@ -228,8 +229,7 @@ def log_changed_columns(table_fields, dataframe_fields):
 
 def overwrite_existing_table(df, iceberg_table, partition_field, partition_value, table_location):
     # Overwrite existing table
-    logging.info('')
-    logging.info(f"Overwriting existing table: '{iceberg_table}'")
+    logging.info(f"- overwriting existing table")
 
     df.write.format("iceberg") \
         .mode("overwrite") \
@@ -240,7 +240,6 @@ def overwrite_existing_table(df, iceberg_table, partition_field, partition_value
 def merge_into_existing_table(df, iceberg_table, partition_field, table_location):
     # Append to existing table
     logging.info('')
-    logging.info(f"- table found!")
     logging.info(f"- appending to the existing table w/ schema evolution enabled (mergeSchema)")
 
     df.writeTo(iceberg_table) \

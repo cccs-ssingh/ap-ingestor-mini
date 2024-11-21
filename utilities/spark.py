@@ -229,10 +229,9 @@ def overwrite_existing_table(df, iceberg_table, partition_field, partition_value
     logging.info('')
     logging.info(f"Overwriting existing table: '{iceberg_table}'")
 
-    df.writeTo(iceberg_table) \
-        .tableProperty("location", table_location) \
-        .partitionedBy(partition_field) \
-        .overwrite(col(partition_field) == partition_value)
+    df.write.format("iceberg") \
+        .mode("overwrite") \
+        .save("table_location")
 
     logging.info('- overwritten!')
 

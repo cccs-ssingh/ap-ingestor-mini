@@ -109,6 +109,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Write the dataframe
     iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
+    logging.info(f"")
+    logging.info(f"Checking if {iceberg_table} exists")
 
     if not spark.catalog.tableExists(iceberg_table):
         # New Iceberg table
@@ -182,9 +184,9 @@ def populate_timeperiod_partition_column(df, partition_field, partition_value, p
     return df
 
 def create_new_iceberg_table(df, iceberg_table, table_location, partition_field):
-    logging.info(f"")
-    logging.info(f"No existing table found!")
-    logging.info(f"- creating a new Iceberg Table.")
+    logging.info(f"- no existing table found!")
+    logging.info(f"- creating a new Iceberg Table")
+
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
         .tableProperty("write.spark.accept-any-schema", "true") \
@@ -238,8 +240,8 @@ def overwrite_existing_table(df, iceberg_table, partition_field, partition_value
 def merge_into_existing_table(df, iceberg_table, partition_field, table_location):
     # Append to existing table
     logging.info('')
-    logging.info(f"Appending to: '{iceberg_table}'")
-    logging.info(f"- schema evolution enabled (mergeSchema)")
+    logging.info(f"- table found!")
+    logging.info(f"- appending to the existing table w/ schema evolution enabled (mergeSchema)")
 
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \

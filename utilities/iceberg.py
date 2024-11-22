@@ -1,32 +1,12 @@
 import logging
 import time
-import os
+import os, sys
 import importlib
 
-from spark import read_data
-from pyspark.sql.functions import *
+from .spark import read_data
+from .util_functions import seconds_to_hh_mm_ss
+from pyspark.sql.functions import to_date, lit
 
-def format_size(bytes_size):
-    """
-    Convert bytes to a human-readable format (KB, MB, GB, etc.).
-    """
-    if bytes_size is None or bytes_size == 0:
-        return "0 B"
-
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes_size < 1024:
-            return f"{bytes_size:.2f} {unit}"
-        bytes_size /= 1024
-
-def seconds_to_hh_mm_ss(seconds):
-    # Calculate the time components
-    hours = seconds // 3600
-    seconds %= 3600
-    minutes = seconds // 60
-    seconds %= 60
-
-    # Format the time as HH:MM:SS
-    return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"
 
 # Retrieve the latest snapshot id for an Iceberg table
 def get_latest_snapshot_id(spark, iceberg_table):

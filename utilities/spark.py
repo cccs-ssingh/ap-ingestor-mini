@@ -60,11 +60,14 @@ def read_data(spark, file_cfg, input_files):
         else:
             df = spark.read.json(input_files)
 
-    elif file_cfg['type'] == "xml":  # using databricks library
+    # using databricks library
+    elif file_cfg['type'] == "xml":
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
         logging.info(f"- xml_row_tag: '{file_cfg['xml_row_tag']}'")
+
+        # XML library takes in a XML direcotry, not a file list so we just parse it out
         first_file = input_files[0]
         input_dir = first_file.rsplit('/', 1)[0]
 

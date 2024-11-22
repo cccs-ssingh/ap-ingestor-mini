@@ -112,15 +112,15 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info(f"")
     logging.info(f"Checking if iceberge table exists: '{iceberg_table}'")
 
+    # New Iceberg table
     if not spark.catalog.tableExists(iceberg_table):
-        # New Iceberg table
         create_new_iceberg_table(
             df, iceberg_table,
             cfg_iceberg['table']['location'],
             cfg_iceberg['partition']['field']
         )
-
-    else: # Existing Iceberg Table
+    # Existing Iceberg Table
+    else:
         logging.info(f"- table found!")
 
         if cfg_iceberg['write_mode'] == 'overwrite':
@@ -223,7 +223,7 @@ def log_changed_columns(table_fields, dataframe_fields):
     return changes_detected
 
 def overwrite_existing_table(df, iceberg_table, partition_field, partition_value, table_location):
-    logging.info("- iceberg_write_mode set to 'overwrite'")
+    logging.info("- iceberg.write.mode set to 'overwrite'")
     logging.info('- overwriting existing table')
 
     df.writeTo(iceberg_table) \

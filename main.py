@@ -1,6 +1,7 @@
 from config import *
-from utilities.az import *
-from utilities.spark import *
+from utilities.az import determine_files_to_process
+from utilities.spark import create_spark_session
+from utilities.iceberg import ingest_to_iceberg
 
 # Main function
 def run(*args, **kwargs):

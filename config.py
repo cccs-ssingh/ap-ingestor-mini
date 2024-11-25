@@ -69,7 +69,7 @@ def create_cfg_dict(args):
                 "input": {
                     "name": args.azure_container_input_name,
                     "dir": f"{args.azure_container_input_dir}",
-                    "dir_timeperiod": f"{args.timeperiod_to_process}",
+                    "dir_timeperiod": args.timeperiod_to_process,
                 },
                 "output": {
                     "name": args.azure_container_output_name,

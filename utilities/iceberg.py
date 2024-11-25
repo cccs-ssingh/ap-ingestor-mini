@@ -1,9 +1,5 @@
 import pytz
 import logging
-
-from datetime import datetime, timedelta
-from typing import Any
-from pyspark.sql import SparkSession
 import time
 import os, sys
 import importlib
@@ -11,6 +7,9 @@ import importlib
 from .spark import read_data
 from .util_functions import seconds_to_hh_mm_ss
 from pyspark.sql.functions import to_date, lit
+from datetime import datetime, timedelta
+from typing import Any
+from pyspark.sql import SparkSession
 
 
 # Retrieve the latest snapshot id for an Iceberg table
@@ -53,6 +52,7 @@ def expire_snapshots(spark: SparkSession, iceberg_table: str, day_limit: int):
         iceberg_table (str): The full name of the table
         day_limit (dict): Day limit taken from the --expire_snapshots flag
     """
+    
     [catalog, namespace, table] =  iceberg_table.split('.')
     try:
         logging.info(f" - Expiring old snapshots from {iceberg_table}")
@@ -78,6 +78,7 @@ def remove_orphan_files(spark: SparkSession, iceberg_table: str):
         spark (SparkSession): Current running Spark session
         iceberg_table (str): Full name of current ingested table
     """
+    
     [catalog, namespace, table] =  iceberg_table.split('.')
 
     try:
@@ -85,7 +86,7 @@ def remove_orphan_files(spark: SparkSession, iceberg_table: str):
         
         named_args = create_named_args(
             table=f"'{namespace}.{table}'",
-                        older_than=f"TIMESTAMP '{datetime.now(tz=pytz.utc) - timedelta(days=2)}'",
+            older_than=f"TIMESTAMP '{datetime.now(tz=pytz.utc) - timedelta(days=2)}'",
         )
         
         output = spark.sql(f"CALL {catalog}.system.remove_orphan_files({named_args})")
@@ -150,7 +151,13 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
                 cfg_iceberg['partition']['field'],
                 cfg_iceberg['table']['location']
             )
-
+        
+        # Do retention here
+        expire_snapshots(spark, iceberg_table, cfg_iceberg['retention']['expire_snapshots'])
+        
+        if not cfg_iceberg['retention']['keep_orphan_files']:
+            remove_orphan_files(spark, iceberg_table)            
+    
     # End Spark Session
     log_metrics(df, start_time)
     spark.stop()
@@ -198,6 +205,8 @@ def create_new_iceberg_table(df, iceberg_table, table_location, partition_field)
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
         .tableProperty("write.spark.accept-any-schema", "true") \
+        .tableProperty("write.metadata.delete-after-commit.enabled", "true") \
+        .tableProperty("write.metadata.previous-versions-max", 50) \
         .partitionedBy(partition_field) \
         .create()
     logging.info(f"- created: {iceberg_table}")
@@ -240,6 +249,8 @@ def overwrite_existing_table(df, iceberg_table, partition_field, partition_value
 
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
+        .tableProperty("write.metadata.delete-after-commit.enabled", "true") \
+        .tableProperty("write.metadata.previous-versions-max", 50) \
         .partitionedBy(partition_field) \
         .overwritePartitions()
 
@@ -251,6 +262,8 @@ def merge_into_existing_table(df, iceberg_table, partition_field, table_location
 
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
+        .tableProperty("write.metadata.delete-after-commit.enabled", "true") \
+        .tableProperty("write.metadata.previous-versions-max", 50) \
         .option("mergeSchema", "true") \
         .option("check-ordering", "false") \
         .partitionedBy(partition_field) \

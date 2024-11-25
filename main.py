@@ -1,6 +1,7 @@
 from config import *
-from utilities.az import *
-from utilities.spark import *
+from utilities.az import determine_files_to_process
+from utilities.spark import create_spark_session
+from utilities.iceberg import ingest_to_iceberg
 
 # Main function
 def run(*args, **kwargs):
@@ -15,10 +16,6 @@ def run(*args, **kwargs):
 
     # Determine files tp process from Azure
     files_to_process = determine_files_to_process(cfg['azure'], cfg['file'])
-    if not files_to_process:
-        logging.warning("No files found in the specified directory.")
-        logging.warning("")
-        raise SystemExit(99)
 
     # Ingest files into Iceberg table
     ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, files_to_process)

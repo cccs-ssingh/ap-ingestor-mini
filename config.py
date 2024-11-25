@@ -9,6 +9,7 @@ def parse_cmd_line_args(args, kwargs):
     # Azure
     # - Input
     arg_parser.add_argument('--timeperiod_to_process', required=True, help="ie. yyyy/mm/dd/hh")
+    arg_parser.add_argument('--catchup', action='store_true', help="Process all files from date provided onwards")
     arg_parser.add_argument('--azure_container_input_name', default="data", help="Input data container name")
     arg_parser.add_argument('--azure_container_input_dir', required=True, help="Raw data directory in Azure Storage")
     # - Output
@@ -57,6 +58,7 @@ def create_cfg_dict(args):
             "json_multiline": args.json_multiline,
             "xml_row_tag": args.xml_row_tag,
             "log_files": args.log_files,
+            "catchup": args.catchup
         },
         "azure": {
             "storage_account": {
@@ -66,7 +68,8 @@ def create_cfg_dict(args):
             "container": {
                 "input": {
                     "name": args.azure_container_input_name,
-                    "dir": f"{args.azure_container_input_dir}/{args.timeperiod_to_process}",
+                    "dir": f"{args.azure_container_input_dir}",
+                    "dir_timeperiod": args.timeperiod_to_process,
                 },
                 "output": {
                     "name": args.azure_container_output_name,
@@ -109,7 +112,6 @@ def get_conn_str_from_vault():
 
 def parse_connection_string(conn_str):
     """Parse the Azure connection string to extract the AccountName and AccountKey. """
-
     if not conn_str:
         logging.error("Azure storage account connection string not provided as an Env Var")
         exit(1)

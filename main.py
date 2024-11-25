@@ -11,7 +11,7 @@ def run(*args, **kwargs):
     args = parse_cmd_line_args(args, kwargs)
     cfg = create_cfg_dict(args)
 
-    # # # Create Spark session
+    # Create Spark session
     spark = create_spark_session(cfg['iceberg']['table']['name'])
 
     # Determine files tp process from Azure

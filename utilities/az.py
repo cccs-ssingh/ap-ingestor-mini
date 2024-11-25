@@ -17,13 +17,12 @@ def list_blobs_in_directory(container_name, container_client, container_dir):
         blob_url = f"abfss://{container_name}@{container_client.account_name}.dfs.core.windows.net/{blob.name}"
         logging.debug(blob_url)
         blob_urls.append(blob_url)
-    logging.info(f" - {len(blob_urls)} blobs total")
 
+    logging.info(f" - {len(blob_urls)} blobs total")
     return blob_urls
 
 def filter_urls_by_file_type(blob_urls, file_type_filter, log_files_flag):
     # Filter expected file type
-    logging.info(f'- blobs total: {len(blob_urls)}')
     blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type_filter)]
     logging.info(f"- blobs of type '{file_type_filter}': {len(blob_urls)}")
 
@@ -61,10 +60,12 @@ def determine_files_to_process(azure_cfg, cfg_file):
 
     azure_blob_urls = []
     for dir in directories_to_search:
-        azure_blob_urls += list_blobs_in_directory(azure_cfg['container']['input']['name'], container_client, dir,)
+        azure_blob_urls += list_blobs_in_directory(azure_cfg['container']['input']['name'], container_client, dir)
 
     # Filter blobs based on file extension
     azure_blob_urls_filtered = filter_urls_by_file_type(azure_blob_urls, cfg_file['type'], cfg_file['log_files'])
+
+    # Check if there are no files to process
     if not azure_blob_urls_filtered:
         logging.warning("")
         logging.warning("No files to be processed. Marking as Skip")
@@ -77,7 +78,7 @@ def filter_directories_by_timeperiod(container_client, directory_prefix, timeper
     # Determine time period format
     if len(timeperiod_str.split("/")) == 3:
         date_format = "%Y/%m/%d"
-    if len(timeperiod_str.split("/")) == 4:
+    elif len(timeperiod_str.split("/")) == 4:
         date_format = "%Y/%m/%d/%H"
     else:
         logging.error(f"invalid timeperiod supplied: {timeperiod_str}")

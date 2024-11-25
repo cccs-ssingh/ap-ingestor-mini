@@ -10,6 +10,16 @@ from pyspark.sql.functions import to_date, lit
 from datetime import datetime, timedelta
 from typing import Any
 from pyspark.sql import SparkSession
+from datetime import datetime, timedelta
+from typing import Any
+from pyspark.sql import SparkSession
+
+def format_size(bytes_size):
+    """
+    Convert bytes to a human-readable format (KB, MB, GB, etc.).
+    """
+    if bytes_size is None or bytes_size == 0:
+        return "0 B"
 
 
 # Retrieve the latest snapshot id for an Iceberg table
@@ -97,6 +107,7 @@ def remove_orphan_files(spark: SparkSession, iceberg_table: str):
         
     except Exception as e:
         logging.info(f" - Removing orphan files failed caused by error: {e}")
+<<<<<<< Updated upstream
 
 
 # Function to ingest raw data into an Iceberg table dynamically
@@ -277,3 +288,5 @@ def log_metrics(df, start_time):
     logging.info('Metrics:')
     logging.info(f"-      records: {df.count():,}")
     logging.info(f"- processed in: {elapsed_time}s")
+=======
+>>>>>>> Stashed changes

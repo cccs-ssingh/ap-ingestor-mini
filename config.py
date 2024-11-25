@@ -30,7 +30,13 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--xml_row_tag', help="Row tag to use for XML format ")
     arg_parser.add_argument('--json_multiline', action='store_true', help="if json is multiline separated")
     arg_parser.add_argument('--log_files', action='store_true', help="log files to be processed")
-
+    
+    # Retention (all recommended maintenance per Iceberg docs except remove old metadata files, which should be enabled by default)
+    # https://iceberg.apache.org/docs/1.5.1/maintenance/#recommended-maintenance
+    arg_parser.add_argument('--expire_snapshots', default=30, help="Time limit in days to keep a table's snapshot")
+    arg_parser.add_argument('--keep_orphan_files', action='store_true', help="Flag to remove all data files not referenced in any metadata")
+    arg_parser.set_defaults(keep_orphan_files=False)
+    
     if kwargs and "run_args" in kwargs["context"]:
         arg_parser = arg_parser.parse_args(kwargs["context"]["run_args"])
     elif args and len(args) > 0:
@@ -91,6 +97,10 @@ def create_cfg_dict(args):
                 "value": args.timeperiod_to_process,
             },
             "write_mode": args.iceberg_write_mode,
+            "retention": {
+                "expire_snapshots": int(args.expire_snapshots),
+                "keep_orphan_files": args.keep_orphan_files
+            }
         },
     }
 

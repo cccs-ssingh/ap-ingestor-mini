@@ -1,4 +1,9 @@
+import pytz
 import logging
+
+from datetime import datetime, timedelta
+from typing import Any
+from pyspark.sql import SparkSession
 import time
 import os, sys
 import importlib
@@ -24,6 +29,73 @@ def get_latest_snapshot_id(spark, iceberg_table):
         # If the table doesn't exist, return None or handle it appropriately
         print(f"Table '{iceberg_table}' does not exist or cannot be read: {e}")
         return None
+
+def create_named_args(**kwargs: Any) -> str:
+    """Create key-value pair arguments a la Iceberg DDL:
+    https://iceberg.apache.org/docs/1.5.1/spark-procedures/
+
+    Args:
+        kwargs (Any): Keyword arguments passed
+
+    Returns:
+        str: The key-value pair arguments in string format
+    """
+
+    return ", ".join(f"{k} => {v}" for k, v in kwargs.items() if v is not None)
+
+def expire_snapshots(spark: SparkSession, iceberg_table: str, day_limit: int):
+    """Call expire_snapshots as Iceberg procedure on the current ingested table
+    via the current running Spark session using Iceberg DDL with config from passed
+    flag arguments
+
+    Args:
+        spark (SparkSession): The current running Spark session
+        iceberg_table (str): The full name of the table
+        day_limit (dict): Day limit taken from the --expire_snapshots flag
+    """
+    [catalog, namespace, table] =  iceberg_table.split('.')
+    try:
+        logging.info(f" - Expiring old snapshots from {iceberg_table}")
+        
+        named_args = create_named_args(
+            table=f"'{namespace}.{table}'",
+            older_than=f"TIMESTAMP '{datetime.now(tz=pytz.utc) - timedelta(days=day_limit)}'",
+            retain_last=1,
+            stream_results=True,
+        )
+        
+        output = spark.sql(f"CALL {catalog}.system.expire_snapshots({named_args})")
+        logging.info(f" - Deleted {output.deleted_data_files_count} data files and {output.deleted_manifest_files_count} manifest files")
+
+    except Exception as e:
+        logging.info(f" - Removing old snapshots failed caused by error: {e}")
+
+def remove_orphan_files(spark: SparkSession, iceberg_table: str):
+    """Calls remove_orphan_files as Iceberg procedure for orphan files from the last 2 days
+    since now
+
+    Args:
+        spark (SparkSession): Current running Spark session
+        iceberg_table (str): Full name of current ingested table
+    """
+    [catalog, namespace, table] =  iceberg_table.split('.')
+
+    try:
+        logging.info(f" - Removing orphan files from {iceberg_table}")
+        
+        named_args = create_named_args(
+            table=f"'{namespace}.{table}'",
+                        older_than=f"TIMESTAMP '{datetime.now(tz=pytz.utc) - timedelta(days=2)}'",
+        )
+        
+        output = spark.sql(f"CALL {catalog}.system.remove_orphan_files({named_args})")
+        
+        orphan_file_location = output.select("orphan_file_location")
+        num_removed_files = orphan_file_location.count()
+        logging.info(f" - Removed {num_removed_files} orphaned files.")
+        
+    except Exception as e:
+        logging.info(f" - Removing orphan files failed caused by error: {e}")
 
 
 # Function to ingest raw data into an Iceberg table dynamically

@@ -31,21 +31,18 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--json_multiline', action='store_true', help="if json is multiline separated")
     arg_parser.add_argument('--log_files', action='store_true', help="log files to be processed")
     
-<<<<<<< Updated upstream
     # Retention (all recommended maintenance per Iceberg docs except remove old metadata files, which should be enabled by default)
     # https://iceberg.apache.org/docs/1.5.1/maintenance/#recommended-maintenance
     arg_parser.add_argument('--expire_snapshots', default=30, help="Time limit in days to keep a table's snapshot")
     arg_parser.add_argument('--keep_orphan_files', action='store_true', help="Flag to remove all data files not referenced in any metadata")
     arg_parser.set_defaults(keep_orphan_files=False)
     
-=======
     # Retention (all recommended maintenance per Iceberg docs)
     # https://iceberg.apache.org/docs/1.5.1/maintenance/#recommended-maintenance
     arg_parser.add_argument('--expire_snapshots', default=30, help="Time limit in days to keep a table's snapshot")
-    arg_parser.add_argument('--remove_orphan_files', default=True, help="Flag to remove all data files not referenced in any metadata")
-    arg_parser.add_argument('--remove_old_metadata', default=True, help="Flag to remove old metadata, writes to TBLPROPERTIES so that Iceberg removes them automatically")
+    arg_parser.add_argument('--keep_orphan_files', action="store_true", help="Flag to remove all data files not referenced in any metadata")
+    arg_parser.set_defaults(keep_orphan_files=False)
 
->>>>>>> Stashed changes
     if kwargs and "run_args" in kwargs["context"]:
         arg_parser = arg_parser.parse_args(kwargs["context"]["run_args"])
     elif args and len(args) > 0:

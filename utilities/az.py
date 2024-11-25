@@ -54,7 +54,7 @@ def determine_files_to_process(azure_cfg, cfg_file):
         # Get all directories >= provided timeperiod
         logging.info('- catchup flag: ENABLED')
 
-        directories_to_search = filter_directores_by_timeperiod(
+        directories_to_search = filter_directories_by_timeperiod(
             container_client, azure_cfg['container']['input']['dir'],
             azure_cfg['container']['input']['dir_timeperiod']
         )
@@ -73,7 +73,7 @@ def determine_files_to_process(azure_cfg, cfg_file):
 
     return azure_blob_urls_filtered
 
-def filter_directores_by_timeperiod(container_client, directory_prefix, timeperiod_str):
+def filter_directories_by_timeperiod(container_client, directory_prefix, timeperiod_str):
     # Determine time period format
     if len(timeperiod_str.split("/")) == 3:
         date_format = "%Y/%m/%d"
@@ -96,10 +96,10 @@ def filter_directores_by_timeperiod(container_client, directory_prefix, timeperi
             timestamp_str = "/".join(timestamp_parts)
 
             # Parse the timestamp and check against the start_time
-            if len(timestamp_parts) == 4:
-                blob_timestamp = datetime.strptime(timestamp_str, "%Y/%m/%d/%H")
-            elif len(timestamp_parts) == 3:
+            if len(timestamp_parts) == 3:
                 blob_timestamp = datetime.strptime(timestamp_str, "%Y/%m/%d")
+            elif len(timestamp_parts) == 4:
+                blob_timestamp = datetime.strptime(timestamp_str, "%Y/%m/%d/%H")
 
             # Add the directory to the list if the timestamp is valid
             if start_time <= blob_timestamp:
@@ -110,4 +110,4 @@ def filter_directores_by_timeperiod(container_client, directory_prefix, timeperi
             # Skip paths that don't conform to the expected timestamp format
             continue
 
-    return list(valid_directories)
+    return sorted(list(valid_directories))

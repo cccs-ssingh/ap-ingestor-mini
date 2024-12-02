@@ -25,7 +25,7 @@ SpellbookSparkLabsOperator(
     namespace="spark-datafeeds",
     application="local:///home/prime/main.py",
     image="uchimera.azurecr.io/cccs/ap/ingestion/datafeeds-mini",
-    # tag="SparkLabsOperator", # git branch # CHANGE
+    tag="<your feed git branch>", # CHANGE
     name="apa4b-ingest-mini-<feed>", # k8s pod name: (no underscores permitted) # CHANGE
     application_args=[
         "--azure_container_input_dir", "<feed>", # CHANGE
@@ -34,9 +34,9 @@ SpellbookSparkLabsOperator(
         
         # Iceberg
         "--iceberg_catalog", "hogwarts_u",
-        "--iceberg_namespace", "threat_feeds",
+        "--iceberg_namespace", "test", 
         "--iceberg_table", "<feed>'", # CHANGE
-        "--iceberg_partition_format", "yyyy/MM/dd",
+        "--iceberg_partition_format", "yyyy/MM/dd", # CHANGE
 
         # Add more based on the datafeed
     ],

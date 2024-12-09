@@ -9,7 +9,6 @@ az_logger.setLevel(logging.WARNING)
 
 # Function to list blobs in a directory from Azure Blob Storage using connection string
 def list_blobs_in_directory(container_name, container_client, container_dir):
-    logging.info(f"- retrieving blob urls from [{container_name}]:{container_dir}")
     blobs = container_client.list_blobs(name_starts_with=container_dir)
 
     blob_urls = []
@@ -18,13 +17,13 @@ def list_blobs_in_directory(container_name, container_client, container_dir):
         logging.debug(blob_url)
         blob_urls.append(blob_url)
 
-    logging.info(f" - {len(blob_urls)} blobs total")
+    logging.info(f" - {len(blob_urls)} blobs total in: [{container_name}]:{container_dir}")
     return blob_urls
 
 def filter_urls_by_file_type(blob_urls, file_type_filter, log_files_flag):
     # Filter expected file type
     blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type_filter)]
-    logging.info(f" - {len(blob_urls)} blobs '{file_type_filter}'")
+    logging.info(f" - {len(blob_urls)} '{file_type_filter}' blobs to process")
 
     if log_files_flag:
         for blob_url in blob_urls:
@@ -52,9 +51,11 @@ def determine_files_to_process(azure_cfg, cfg_file):
     else:
         # Get all directories >= provided timeperiod
         logging.info('- catchup flag: ENABLED')
+        logging.info(f"- iterating through dir: '{azure_cfg['container']['input']['dir']} for timestamps >= to: '{azure_cfg['container']['input']['dir_timeperiod']}")
 
         directories_to_search = filter_directories_by_timeperiod(
-            container_client, azure_cfg['container']['input']['dir'],
+            container_client,
+            azure_cfg['container']['input']['dir'],
             azure_cfg['container']['input']['dir_timeperiod']
         )
 
@@ -81,7 +82,7 @@ def filter_directories_by_timeperiod(container_client, directory_prefix, timeper
     elif len(timeperiod_str.split("/")) == 4:
         date_format = "%Y/%m/%d/%H"
     else:
-        logging.error(f"invalid timeperiod supplied: {timeperiod_str}")
+        logging.error(f"Invalid time period supplied: {timeperiod_str}")
         exit(1)
 
     start_time = datetime.strptime(timeperiod_str, date_format)
@@ -89,26 +90,29 @@ def filter_directories_by_timeperiod(container_client, directory_prefix, timeper
     # Iterate through blobs to find directories with valid timestamps
     valid_directories = set()
     for blob in container_client.list_blobs(name_starts_with=directory_prefix):
-        blob_path = blob.name
         try:
-            # Extract the last three or four components (yyyy/mm/dd or yyyy/mm/dd/hh)
-            parts = blob_path.split("/")
-            timestamp_parts = parts[-4:] if len(parts[-1]) == 2 else parts[-3:]  # Check if last part is "hh"
-            timestamp_str = "/".join(timestamp_parts)
+            logging.debug(f"checking blob: {blob.name}")
 
-            # Parse the timestamp and check against the start_time
-            if len(timestamp_parts) == 3:
-                blob_timestamp = datetime.strptime(timestamp_str, "%Y/%m/%d")
-            elif len(timestamp_parts) == 4:
-                blob_timestamp = datetime.strptime(timestamp_str, "%Y/%m/%d/%H")
+            # Remove the prefix to isolate the timestamp portion
+            relative_path = blob.name[len(directory_prefix):].strip("/")
+            parts = relative_path.split("/")
 
-            # Add the directory to the list if the timestamp is valid
-            if start_time <= blob_timestamp:
-                directory = "/".join(parts[:-1])  # Get the directory part (exclude filename)
-                valid_directories.add(directory)
+            # Check if the path contains enough parts for a timestamp
+            if len(parts) >= 4:  # Ensure at least yyyy/mm/dd/filename
+                # Extract the potential timestamp parts
+                timestamp_parts = parts[:3] if len(parts) == 3 else parts[-4:-1]  # Handles yyyy/mm/dd[/hh]
+                timestamp_str = "/".join(timestamp_parts)
 
-        except ValueError:
-            # Skip paths that don't conform to the expected timestamp format
+                # Parse the timestamp and check against the start_time
+                blob_timestamp = datetime.strptime(timestamp_str, date_format)
+
+                # Add the directory to the list if the timestamp is valid
+                if start_time <= blob_timestamp:
+                    directory = "/".join(blob.name.split("/")[:-1])  # Exclude the filename
+                    valid_directories.add(directory)
+
+        except ValueError as e:
+            logging.debug(f"Skipping blob {blob.name} due to parsing error: {e}")
             continue
 
     return sorted(list(valid_directories))

@@ -24,7 +24,7 @@ def list_blobs_in_directory(container_name, container_client, container_dir):
 def filter_urls_by_file_type(blob_urls, file_type_filter, log_files_flag):
     # Filter expected file type
     blob_urls = [blob_url for blob_url in blob_urls if blob_url.endswith(file_type_filter)]
-    logging.info(f"- blobs of type '{file_type_filter}': {len(blob_urls)}")
+    logging.info(f" - {len(blob_urls)} blobs '{file_type_filter}'")
 
     if log_files_flag:
         for blob_url in blob_urls:

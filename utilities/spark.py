@@ -44,6 +44,9 @@ def log_spark_config(spark):
 def read_data(spark, file_cfg, input_files):
     logging.info(f"Reading input data")
 
+    if file_cfg['type'].endswith('.gz'):
+        file_cfg['type'] = file_cfg['type'].split('.')[0]
+
     if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
 

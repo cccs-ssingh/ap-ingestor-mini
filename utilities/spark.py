@@ -44,9 +44,11 @@ def log_spark_config(spark):
 def read_data(spark, file_cfg, input_files):
     logging.info(f"Reading input data")
 
+    # remove compression extension and extract native file type
     if file_cfg['type'].endswith('.gz'):
         file_cfg['type'] = file_cfg['type'].split('.')[0]
 
+    # Supported file types
     if file_cfg['type'] == "csv":
         df = spark.read.option("header", "true").csv(input_files)
 
@@ -63,8 +65,7 @@ def read_data(spark, file_cfg, input_files):
         else:
             df = spark.read.json(input_files)
 
-    # using databricks library
-    elif file_cfg['type'] == "xml":
+    elif file_cfg['type'] == "xml":  # uses databricks library
         if not file_cfg["xml_row_tag"]:
             raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 

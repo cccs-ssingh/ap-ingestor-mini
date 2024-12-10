@@ -6,6 +6,7 @@ import importlib
 from .spark import read_data
 from .util_functions import seconds_to_hh_mm_ss
 from pyspark.sql.functions import to_date, lit
+from pyspark.sql.types import TimestampType
 
 
 # Retrieve the latest snapshot id for an Iceberg table
@@ -69,10 +70,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         partition_field = next((field for field in iceberg_table_schema if field.name == cfg_iceberg['partition']['field']), None)
         if partition_field:
             logging.info(f"- data type of column {cfg_iceberg['partition']['field']} is: {partition_field.dataType}")
-        if partition_field.dataType == 'timestamptz':
-            logging.info('HERE1')
-        if str(partition_field.dataType) == 'timestamptz':
-            logging.info('HERE2')
+        if isinstance(partition_field.dataType, TimestampType):
+            logging.info("HERE")
 
         if cfg_iceberg['write_mode'] == 'overwrite':
             overwrite_existing_table(

@@ -96,19 +96,19 @@ def create_cfg_dict(args):
 
     return config_dict
 
-def get_conn_str_from_vault():
-    from hogwarts.auth.vault.vault_client import VaultClient
-    logging.error(f"No azure connection string set as env var")
-    logging.error(f"- retrieving connection string via hogwarts.auth.vault.vault_client library")
-
-    vault = VaultClient()
-    vault.login()
-    group_name = 'APA4B-sg'
-    secret_name = 'apdatalakeudatafeeds'
-    s = vault.get_group_secret(group_name, secret_name)
-    conn_str = s.get("conn_str")
-
-    return conn_str
+# def get_conn_str_from_vault():
+#     from hogwarts.auth.vault.vault_client import VaultClient
+#     logging.error(f"No azure connection string set as env var")
+#     logging.error(f"- retrieving connection string via hogwarts.auth.vault.vault_client library")
+#
+#     vault = VaultClient()
+#     vault.login()
+#     group_name = 'APA4B-sg'
+#     secret_name = 'apdatalakeudatafeeds'
+#     s = vault.get_group_secret(group_name, secret_name)
+#     conn_str = s.get("conn_str")
+#
+#     return conn_str
 
 def parse_connection_string(conn_str):
     """Parse the Azure connection string to extract the AccountName and AccountKey. """

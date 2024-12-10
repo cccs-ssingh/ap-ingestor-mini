@@ -41,7 +41,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
     # Populate partition column
-    df = populate_timeperiod_partition_column(
+    df = populate_column(
         df,
         cfg_iceberg['partition']['field'],
         cfg_iceberg['partition']['value'],
@@ -63,6 +63,16 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Existing Iceberg Table
     else:
         logging.info(f"- table found!")
+
+        # Find the data type of the partition column
+        iceberg_table_schema = spark.table(iceberg_table).schema
+        partition_field = next((field for field in iceberg_table_schema if field.name == cfg_iceberg['partition']['field']), None)
+        if partition_field:
+            logging.info(f"- data type of column {cfg_iceberg['partition']['field']} is: {partition_field.dataType}")
+        if partition_field.dataType == 'timestamptz':
+            logging.info('HERE1')
+        if str(partition_field.dataType) == 'timestamptz':
+            logging.info('HERE2')
 
         if cfg_iceberg['write_mode'] == 'overwrite':
             overwrite_existing_table(
@@ -111,11 +121,11 @@ def apply_custom_ingestor_rules(df, module_name):
     else:
         return df
 
-def populate_timeperiod_partition_column(df, partition_field, partition_value, partition_format):
+def populate_column(df, field, value, field_format):
     logging.info(f"")
-    logging.info(f"Populating partition 'column' -> value")
-    logging.info(f"- '{partition_field}' -> {partition_value}")
-    df = df.withColumn(partition_field, to_date(lit(partition_value), partition_format))
+    logging.info(f"Populating 'column' -> value")
+    logging.info(f"- '{field}' -> {value}")
+    df = df.withColumn(field, to_date(lit(value), field_format))
     logging.info(f"- populated")
     return df
 

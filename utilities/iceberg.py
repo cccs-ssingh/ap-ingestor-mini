@@ -3,6 +3,8 @@ import time
 import os, sys
 import importlib
 
+from pyspark.sql.connect.functions import to_timestamp
+
 from .spark import read_data
 from .util_functions import seconds_to_hh_mm_ss
 from pyspark.sql.functions import to_date, lit
@@ -123,7 +125,10 @@ def populate_column(df, field, value, field_format):
     logging.info(f"")
     logging.info(f"Populating 'column' -> value")
     logging.info(f"- '{field}' -> {value}")
-    df = df.withColumn(field, to_date(lit(value), field_format))
+    if field_format == 'yyyy/MM/dd':
+        df = df.withColumn(field, to_date(lit(value), field_format))
+    elif field_format == "yyyy/MM/dd HH:mm:ss":
+        df = df.withColumn(field, to_timestamp(lit(value), field_format))
     logging.info(f"- populated")
     return df
 

@@ -30,6 +30,7 @@ def get_latest_snapshot_id(spark, iceberg_table):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info("")
+    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
     # Start timing
     start_time = time.time()
@@ -41,23 +42,31 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Manual adjustments
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
+    # Check for existing partition column
+    if spark.catalog.tableExists(iceberg_table):
+        iceberg_table_schema = spark.table(iceberg_table).schema
+        partition_field = next((field for field in iceberg_table_schema if field.name == cfg_iceberg['partition']['field']),None)
+        if partition_field:
+            logging.info(f"- existing partition column '{cfg_iceberg['partition']['field']}' exists")
+            logging.info(f"- data type of column {cfg_iceberg['partition']['field']} is: {partition_field.dataType}")
+            if partition_field.dataType == TimestampType():
+                cfg_iceberg['partition']['format'] = "yyyy/MM/dd HH:mm:ss"
+
+
     # Populate partition column
-    df = populate_column(
-        df,
+    df = populate_column(df,
         cfg_iceberg['partition']['field'],
         cfg_iceberg['partition']['value'],
         cfg_iceberg['partition']['format']
     )
 
     # Write the dataframe
-    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
     logging.info(f"")
     logging.info(f"Checking if iceberge table exists: '{iceberg_table}'")
 
     # New Iceberg table
     if not spark.catalog.tableExists(iceberg_table):
-        create_new_iceberg_table(
-            df, iceberg_table,
+        create_new_iceberg_table(df, iceberg_table,
             cfg_iceberg['table']['location'],
             cfg_iceberg['partition']['field']
         )
@@ -65,25 +74,15 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     else:
         logging.info(f"- table found!")
 
-        # Find the data type of the partition column
-        iceberg_table_schema = spark.table(iceberg_table).schema
-        partition_field = next((field for field in iceberg_table_schema if field.name == cfg_iceberg['partition']['field']), None)
-        if partition_field:
-            logging.info(f"- data type of column {cfg_iceberg['partition']['field']} is: {partition_field.dataType}")
-        if isinstance(partition_field.dataType, TimestampType):
-            logging.info("HERE")
-
         if cfg_iceberg['write_mode'] == 'overwrite':
-            overwrite_existing_table(
-                df, iceberg_table,
+            overwrite_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
                 cfg_iceberg['partition']['value'],
                 cfg_iceberg['table']['location'],
             )
         else:
             # log_new_columns(spark, df, iceberg_table)
-            merge_into_existing_table(
-                df, iceberg_table,
+            merge_into_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
                 cfg_iceberg['table']['location']
             )

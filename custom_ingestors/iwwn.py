@@ -7,7 +7,7 @@ def apply_custom_rules(df):
     logging.info(f" - Converting all columns to StringType()")
     
     # Get all sub-fields from Event
-    df = df.select("Event.*")
+    df = df.select("Event.*", "timeperiod_loaded_by")
     
     # Convert all columns into StringType
     for column in df.columns:

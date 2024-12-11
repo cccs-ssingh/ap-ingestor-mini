@@ -30,7 +30,6 @@ def get_latest_snapshot_id(spark, iceberg_table):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info("")
-    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
     # Start timing
     start_time = time.time()
@@ -50,6 +49,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
     # Check if table exists
     logging.info(f"")
+    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
     logging.info(f"Checking if iceberg table exists: '{iceberg_table}'")
 
     # Write the dataframe
@@ -136,12 +136,12 @@ def populate_partition_field(df, field, format):
     if format == format_date:
         curr_date = timestamp_now.strftime("%Y/%m/%d")
         df = df.withColumn(field, to_date(lit(curr_date), format))
-        logging.info(f" - column '{field}' populated with '{curr_date}' in format '{format_date}'.")
+        logging.info(f" - column '{field}' populated with '{curr_date}'")
 
     elif format == format_timestamp:
         curr_timestamp = timestamp_now.strftime("%Y/%m/%d %H:%M:%S")
         df = df.withColumn(field, to_timestamp(lit(curr_timestamp), format))
-        logging.info(f" - column '{field}' populated with '{curr_timestamp}' in format '{format_timestamp}'.")
+        logging.info(f" - column '{field}' populated with '{curr_timestamp}'")
 
     else:
         raise ValueError(f"Invalid format '{format}'. Accepted formats are '{format_date}' and '{format_timestamp}'.")

@@ -121,14 +121,14 @@ def apply_custom_ingestor_rules(df, module_name):
     else:
         return df
 
-def populate_column(df, field, value, field_format):
+def populate_column(df, field, value, format):
     logging.info(f"")
     logging.info(f"Populating 'column' -> value")
     logging.info(f"- '{field}' -> {value}")
-    if field_format == 'yyyy/MM/dd':
-        df = df.withColumn(field, to_date(lit(value), field_format))
-    elif field_format == "yyyy/MM/dd HH:mm:ss":
-        df = df.withColumn(field, to_timestamp(lit(value), field_format))
+    if format == 'yyyy/MM/dd':
+        df = df.withColumn(field, to_date(lit(value), format))
+    elif format == "yyyy/MM/dd HH:mm:ss":
+        df = df.withColumn(field, to_timestamp(lit(value), format))
     logging.info(f"- populated")
     return df
 

@@ -2,3 +2,4 @@ azure-core
 azure-storage-blob
 pyspark
 hogwarts-auth
+pandas

@@ -47,7 +47,7 @@ def read_data(spark, file_cfg, input_files):
     logging.info(f"Reading input data")
 
     # Initialize an empty DataFrame
-    df = spark.createDataFrame([], schema=None)
+    df = None
     problematic_file = None
 
     for file in input_files:
@@ -87,8 +87,12 @@ def read_data(spark, file_cfg, input_files):
             else:
                 raise ValueError(f"Unsupported file type: {file_cfg['type']}")
 
-            # Merge the schema by unioning the DataFrames
-            df = df.unionByName(temp_df, allowMissingColumns=True)
+            # Check if the DataFrame is empty
+            if temp_df.head(1):
+                if df is None:
+                    df = temp_df
+                else:
+                    df = df.unionByName(temp_df, allowMissingColumns=True)
 
         except Exception as e:
             logging.error(f"Error processing file: {file}")

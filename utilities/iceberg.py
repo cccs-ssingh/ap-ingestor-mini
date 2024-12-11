@@ -43,9 +43,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
     # Check if existing table exists
-    existing_table_schema = check_if_table_exists(spark, iceberg_table)
-    if existing_table_schema:
-        sync_partition_col_to_existing_table(existing_table_schema, cfg_iceberg)
+    # existing_table_schema = check_if_table_exists(spark, iceberg_table)
+    # if existing_table_schema:
+    #     set_partition_format_to_timestamp_if_mismatch(existing_table_schema, cfg_iceberg)
 
     # Populate partition column
     df = populate_column(df,
@@ -55,7 +55,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     )
 
     # Write the dataframe
-    if not existing_table_schema:
+    if not spark.catalog.tableExists(iceberg_table):
         # New Iceberg table
         create_new_iceberg_table(df, iceberg_table,
             cfg_iceberg['table']['location'],
@@ -63,14 +63,12 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         )
     else:
         # Existing Iceberg Table
-        if cfg_iceberg['write_mode'] == 'overwrite':
-            # Overwrite mode
+        if cfg_iceberg['write_mode'] == 'overwrite': # Overwrite mode
             overwrite_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
                 cfg_iceberg['table']['location'],
             )
-        else:
-            # Append mode
+        else: # Append mode
             # log_new_columns(spark, df, iceberg_table)
             merge_into_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
@@ -89,7 +87,7 @@ def check_if_table_exists(spark, iceberg_table):
         logging.info(f"- table found!")
         return spark.table(iceberg_table).schema
 
-def sync_partition_col_to_existing_table(existing_table_schema, cfg_iceberg):
+def set_partition_format_to_timestamp_if_mismatch(existing_table_schema, cfg_iceberg):
     # If a specified partition column already exists in the table
     # ensure the format of the provided partition column matches
     # some tables are in yyyy/MM/dd format, and some are yyyy/MM/dd HH:mm:ss
@@ -98,10 +96,9 @@ def sync_partition_col_to_existing_table(existing_table_schema, cfg_iceberg):
     partition_field = next((field for field in existing_table_schema if field.name == cfg_iceberg['partition']['field']), None)
 
     if partition_field and partition_field.dataType == TimestampType() and cfg_iceberg['partition']['format'] != timestamp_type_str:
-        logging.info(f"- partition column '{cfg_iceberg['partition']['field']}' exists with data type: {partition_field.dataType}")
-
         # Update partition format
         cfg_iceberg['partition']['format'] = timestamp_type_str
+        logging.info(f"- partition column '{cfg_iceberg['partition']['field']}' exists with data type: {partition_field.dataType}")
         logging.info(f"- partition format provided: '{cfg_iceberg['partition']['format']}'")
         logging.info(f"-                updated to: '{timestamp_type_str}' to match table")
 
@@ -136,10 +133,12 @@ def populate_column(df, field, value, format):
     logging.info(f"")
     logging.info(f"Populating 'column' -> value")
     logging.info(f"- '{field}' -> {value}")
+
     if format == 'yyyy/MM/dd':
         df = df.withColumn(field, to_date(lit(value), format))
     elif format == "yyyy/MM/dd HH:mm:ss":
         df = df.withColumn(field, to_timestamp(lit(value), format))
+
     logging.info(f"- populated")
     return df
 

@@ -1,6 +1,6 @@
 import logging
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+from pyspark.sql import DataFrame
 
 
 # Function to create Spark session with Iceberg
@@ -42,9 +42,12 @@ def log_spark_config(spark):
     logging.info("=======================================")
 
 # Read data based on the file type
+
 def read_data(spark, file_cfg, input_files):
     logging.info(f"Reading input data")
 
+    # Initialize an empty DataFrame
+    df = spark.createDataFrame([], schema=None)
     problematic_file = None
 
     for file in input_files:
@@ -52,20 +55,20 @@ def read_data(spark, file_cfg, input_files):
             logging.info(f"Processing file: {file}")
 
             if file_cfg['type'] == "csv":
-                df = spark.read.option("header", "true").csv(file)
+                temp_df = spark.read.option("header", "true").csv(file)
 
             elif file_cfg['type'] == "parquet":
-                df = spark.read.parquet(file)
+                temp_df = spark.read.parquet(file)
 
             elif file_cfg['type'] == "avro":
-                df = spark.read.format("avro").load(file)
+                temp_df = spark.read.format("avro").load(file)
 
             elif file_cfg['type'] == "json":
                 if file_cfg['json_multiline']:
                     logging.info(f"- json_multiline: {file_cfg['json_multiline']}")
-                    df = spark.read.option("multiLine", "true").json(file)
+                    temp_df = spark.read.option("multiLine", "true").json(file)
                 else:
-                    df = spark.read.json(file)
+                    temp_df = spark.read.json(file)
 
             elif file_cfg['type'] == "xml":
                 if not file_cfg["xml_row_tag"]:
@@ -75,7 +78,7 @@ def read_data(spark, file_cfg, input_files):
 
                 input_dir = file.rsplit('/', 1)[0]
 
-                df = (
+                temp_df = (
                     spark.read.format("xml")
                     .option("rowTag", file_cfg["xml_row_tag"])
                     .load(f"{input_dir}/*.xml")
@@ -84,6 +87,8 @@ def read_data(spark, file_cfg, input_files):
             else:
                 raise ValueError(f"Unsupported file type: {file_cfg['type']}")
 
+            # Merge the schema by unioning the DataFrames
+            df = df.unionByName(temp_df, allowMissingColumns=True)
 
         except Exception as e:
             logging.error(f"Error processing file: {file}")

@@ -54,6 +54,10 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         cfg_iceberg['partition']['format']
     )
 
+    # Check if table exists
+    logging.info(f"")
+    logging.info(f"Checking if iceberg table exists: '{iceberg_table}'")
+
     # Write the dataframe
     if not spark.catalog.tableExists(iceberg_table):
         # New Iceberg table
@@ -63,12 +67,17 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         )
     else:
         # Existing Iceberg Table
-        if cfg_iceberg['write_mode'] == 'overwrite': # Overwrite mode
+        logging.info(f"- table found!")
+
+        if cfg_iceberg['write_mode'] == 'overwrite':
+            # Overwrite mode
             overwrite_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
                 cfg_iceberg['table']['location'],
             )
-        else: # Append mode
+
+        else:
+            # Append mode
             # log_new_columns(spark, df, iceberg_table)
             merge_into_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
@@ -80,27 +89,27 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     spark.stop()
     logging.info(f"====================================")
 
-def check_if_table_exists(spark, iceberg_table):
-    logging.info(f"")
-    logging.info(f"Checking if iceberge table exists: '{iceberg_table}'")
-    if spark.catalog.tableExists(iceberg_table):
-        logging.info(f"- table found!")
-        return spark.table(iceberg_table).schema
+# def check_if_table_exists(spark, iceberg_table):
+#     logging.info(f"")
+#     logging.info(f"Checking if iceberge table exists: '{iceberg_table}'")
+#     if spark.catalog.tableExists(iceberg_table):
+#         logging.info(f"- table found!")
+#         return spark.table(iceberg_table).schema
 
-def set_partition_format_to_timestamp_if_mismatch(existing_table_schema, cfg_iceberg):
-    # If a specified partition column already exists in the table
-    # ensure the format of the provided partition column matches
-    # some tables are in yyyy/MM/dd format, and some are yyyy/MM/dd HH:mm:ss
-
-    timestamp_type_str = "yyyy/MM/dd HH:mm:ss"
-    partition_field = next((field for field in existing_table_schema if field.name == cfg_iceberg['partition']['field']), None)
-
-    if partition_field and partition_field.dataType == TimestampType() and cfg_iceberg['partition']['format'] != timestamp_type_str:
-        # Update partition format
-        cfg_iceberg['partition']['format'] = timestamp_type_str
-        logging.info(f"- partition column '{cfg_iceberg['partition']['field']}' exists with data type: {partition_field.dataType}")
-        logging.info(f"- partition format provided: '{cfg_iceberg['partition']['format']}'")
-        logging.info(f"-                updated to: '{timestamp_type_str}' to match table")
+# def set_partition_format_to_timestamp_if_mismatch(existing_table_schema, cfg_iceberg):
+#     # If a specified partition column already exists in the table
+#     # ensure the format of the provided partition column matches
+#     # some tables are in yyyy/MM/dd format, and some are yyyy/MM/dd HH:mm:ss
+#
+#     timestamp_type_str = "yyyy/MM/dd HH:mm:ss"
+#     partition_field = next((field for field in existing_table_schema if field.name == cfg_iceberg['partition']['field']), None)
+#
+#     if partition_field and partition_field.dataType == TimestampType() and cfg_iceberg['partition']['format'] != timestamp_type_str:
+#         # Update partition format
+#         cfg_iceberg['partition']['format'] = timestamp_type_str
+#         logging.info(f"- partition column '{cfg_iceberg['partition']['field']}' exists with data type: {partition_field.dataType}")
+#         logging.info(f"- partition format provided: '{cfg_iceberg['partition']['format']}'")
+#         logging.info(f"-                updated to: '{timestamp_type_str}' to match table")
 
 def apply_custom_ingestor_rules(df, module_name):
     # Construct the full file path and check if it exists
@@ -142,23 +151,24 @@ def populate_column(df, field, value, format):
     Returns:
         DataFrame: The DataFrame with the populated column.
     """
-    logging.info(f"Populating column -> with value")
+    logging.info(f"")
+    logging.info(f"Populating column:")
 
     # Define accepted formats
-    date_format = 'yyyy/MM/dd'
-    timestamp_format = 'yyyy/MM/dd HH:mm:ss'
+    format_date      = 'yyyy/MM/dd'
+    format_timestamp = 'yyyy/MM/dd HH:mm:ss'
 
     # Apply the appropriate transformation based on the format
-    if format == date_format:
+    if format == format_date:
         df = df.withColumn(field, to_date(lit(value), format))
-        logging.info(f" - column '{field}' populated with date format '{date_format}'.")
+        logging.info(f" - column '{field}' populated with value: {value} in format '{format_date}'.")
 
-    elif format == timestamp_format:
+    elif format == format_timestamp:
         df = df.withColumn(field, to_timestamp(lit(value), format))
-        logging.info(f"- column '{field}' populated with timestamp format '{timestamp_format}'.")
+        logging.info(f" - column '{field}' populated with value: {value} in format '{format_timestamp}'.")
 
     else:
-        raise ValueError(f"Invalid format '{format}'. Accepted formats are '{date_format}' and '{timestamp_format}'.")
+        raise ValueError(f"Invalid format '{format}'. Accepted formats are '{format_date}' and '{format_timestamp}'.")
 
     return df
 

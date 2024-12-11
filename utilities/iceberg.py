@@ -3,11 +3,9 @@ import time
 import os, sys
 import importlib
 
-from pyspark.sql.connect.functions import to_timestamp
-
 from .spark import read_data
 from .util_functions import seconds_to_hh_mm_ss
-from pyspark.sql.functions import to_date, lit
+from pyspark.sql.functions import to_date, lit, to_timestamp
 from pyspark.sql.types import TimestampType
 
 

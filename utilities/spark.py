@@ -26,6 +26,7 @@ def log_spark_config(spark):
 
     # Access the Spark configuration
     conf = spark.sparkContext.getConf()
+    logging.info("")
     logging.info("=====  Spark Session Configuration ====")
     logging.info(f"          App Name: {conf.get('spark.app.name')}")
     logging.info(f"            Master: {conf.get('spark.master')}")

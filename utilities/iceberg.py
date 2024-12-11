@@ -67,7 +67,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
             # Overwrite mode
             overwrite_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
-                cfg_iceberg['partition']['value'],
                 cfg_iceberg['table']['location'],
             )
         else:
@@ -98,14 +97,13 @@ def sync_partition_col_to_existing_table(existing_table_schema, cfg_iceberg):
     timestamp_type_str = "yyyy/MM/dd HH:mm:ss"
     partition_field = next((field for field in existing_table_schema if field.name == cfg_iceberg['partition']['field']), None)
 
-    if partition_field:
-        logging.info(f" - existing partition column '{cfg_iceberg['partition']['field']}' exists")
-        logging.info(f" - data type of column {cfg_iceberg['partition']['field']} is: {partition_field.dataType}")
+    if partition_field and partition_field.dataType == TimestampType() and cfg_iceberg['partition']['format'] != timestamp_type_str:
+        logging.info(f"- partition column '{cfg_iceberg['partition']['field']}' exists with data type: {partition_field.dataType}")
 
-        if partition_field.dataType == TimestampType():
-            if cfg_iceberg['partition']['format'] != timestamp_type_str:
-                logging.info(f" - changing data type from {cfg_iceberg['partition']['format']} -> {timestamp_type_str}")
-                cfg_iceberg['partition']['format'] = timestamp_type_str
+        # Update partition format
+        cfg_iceberg['partition']['format'] = timestamp_type_str
+        logging.info(f"- partition format provided: '{cfg_iceberg['partition']['format']}'")
+        logging.info(f"-                updated to: '{timestamp_type_str}' to match table")
 
 def apply_custom_ingestor_rules(df, module_name):
     # Construct the full file path and check if it exists
@@ -188,7 +186,7 @@ def log_changed_columns(table_fields, dataframe_fields):
         logging.info("- all column datatypes match")
     return changes_detected
 
-def overwrite_existing_table(df, iceberg_table, partition_field, partition_value, table_location):
+def overwrite_existing_table(df, iceberg_table, partition_field, table_location):
     logging.info("- iceberg.write.mode set to 'overwrite'")
     logging.info('- overwriting existing table')
 

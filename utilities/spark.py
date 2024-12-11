@@ -59,6 +59,8 @@ def read_data(spark, file_cfg, input_files):
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
             df = spark.read.json(input_files)
+        if 'capital' in df.columns:
+            df = df.withColumnRenamed('capital', 'capital_renamed')
 
     # using databricks library
     elif file_cfg['type'] == "xml":

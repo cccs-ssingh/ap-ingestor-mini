@@ -6,6 +6,7 @@ import importlib
 from .spark import read_data
 from .util_functions import seconds_to_hh_mm_ss
 from pyspark.sql.functions import to_date, lit, to_timestamp
+from dateutil.parser import parse
 from pyspark.sql.types import TimestampType
 
 
@@ -164,6 +165,8 @@ def populate_column(df, field, value, format):
         logging.info(f" - column '{field}' populated with value: {value} in format '{format_date}'.")
 
     elif format == format_timestamp:
+        date_obj = parse(value)
+        value = date_obj.strftime("%Y/%m/%d %H:%M:%S")
         df = df.withColumn(field, to_timestamp(lit(value), format))
         logging.info(f" - column '{field}' populated with value: {value} in format '{format_timestamp}'.")
 

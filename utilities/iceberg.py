@@ -155,7 +155,7 @@ def populate_column(df, field, value, format):
 
     elif format == timestamp_format:
         df = df.withColumn(field, to_timestamp(lit(value), format))
-        logging.info(f"- Column '{field}' populated with timestamp format '{timestamp_format}'.")
+        logging.info(f"- column '{field}' populated with timestamp format '{timestamp_format}'.")
 
     else:
         raise ValueError(f"Invalid format '{format}'. Accepted formats are '{date_format}' and '{timestamp_format}'.")

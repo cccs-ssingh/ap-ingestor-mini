@@ -5,7 +5,8 @@ import importlib
 
 from .spark import read_data
 from .util_functions import seconds_to_hh_mm_ss
-from pyspark.sql.functions import to_date, lit
+from pyspark.sql.functions import to_date, lit, to_timestamp
+from datetime import datetime
 
 
 # Retrieve the latest snapshot id for an Iceberg table
@@ -29,6 +30,7 @@ def get_latest_snapshot_id(spark, iceberg_table):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info("")
+    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
 
     # Start timing
     start_time = time.time()
@@ -41,40 +43,37 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
     # Populate partition column
-    df = populate_timeperiod_partition_column(
-        df,
+    df = populate_partition_field(df,
         cfg_iceberg['partition']['field'],
-        cfg_iceberg['partition']['value'],
         cfg_iceberg['partition']['format']
     )
 
-    # Write the dataframe
-    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
+    # Check if table exists
     logging.info(f"")
-    logging.info(f"Checking if iceberge table exists: '{iceberg_table}'")
+    logging.info(f"Checking if iceberg table exists: '{iceberg_table}'")
 
-    # New Iceberg table
+    # Write the dataframe
     if not spark.catalog.tableExists(iceberg_table):
-        create_new_iceberg_table(
-            df, iceberg_table,
+        # New Iceberg table
+        create_new_iceberg_table(df, iceberg_table,
             cfg_iceberg['table']['location'],
             cfg_iceberg['partition']['field']
         )
-    # Existing Iceberg Table
     else:
+        # Existing Iceberg Table
         logging.info(f"- table found!")
 
         if cfg_iceberg['write_mode'] == 'overwrite':
-            overwrite_existing_table(
-                df, iceberg_table,
+            # Overwrite mode
+            overwrite_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
-                cfg_iceberg['partition']['value'],
                 cfg_iceberg['table']['location'],
             )
+
         else:
+            # Append mode
             # log_new_columns(spark, df, iceberg_table)
-            merge_into_existing_table(
-                df, iceberg_table,
+            merge_into_existing_table(df, iceberg_table,
                 cfg_iceberg['partition']['field'],
                 cfg_iceberg['table']['location']
             )
@@ -111,12 +110,42 @@ def apply_custom_ingestor_rules(df, module_name):
     else:
         return df
 
-def populate_timeperiod_partition_column(df, partition_field, partition_value, partition_format):
+def populate_partition_field(df, field, format):
+    """
+    Populates a column in a DataFrame with a specified value using a given format.
+
+    Args:
+        df (DataFrame): The input DataFrame.
+        field (str): The name of the partition column to populate.
+        format (str): The format of the value (e.g., 'yyyy/MM/dd' or 'yyyy/MM/dd HH:mm:ss').
+
+    Returns:
+        DataFrame: The DataFrame with the populated column.
+    """
     logging.info(f"")
-    logging.info(f"Populating partition 'column' -> value")
-    logging.info(f"- '{partition_field}' -> {partition_value}")
-    df = df.withColumn(partition_field, to_date(lit(partition_value), partition_format))
-    logging.info(f"- populated")
+    logging.info(f"Populating column:")
+
+    # Define accepted formats
+    format_date      = 'yyyy/MM/dd'
+    format_timestamp = 'yyyy/MM/dd HH:mm:ss'
+
+    # Get the current time
+    timestamp_now = datetime.now().replace(minute=0, second=0, microsecond=0)
+
+    # Apply the appropriate transformation based on the format
+    if format == format_date:
+        curr_date = timestamp_now.strftime("%Y/%m/%d")
+        df = df.withColumn(field, to_date(lit(curr_date), format))
+        logging.info(f" - column '{field}' populated with '{curr_date}' in format '{format_date}'.")
+
+    elif format == format_timestamp:
+        curr_timestamp = timestamp_now.strftime("%Y/%m/%d %H:%M:%S")
+        df = df.withColumn(field, to_timestamp(lit(curr_timestamp), format))
+        logging.info(f" - column '{field}' populated with '{curr_timestamp}' in format '{format_timestamp}'.")
+
+    else:
+        raise ValueError(f"Invalid format '{format}'. Accepted formats are '{format_date}' and '{format_timestamp}'.")
+
     return df
 
 def create_new_iceberg_table(df, iceberg_table, table_location, partition_field):
@@ -162,7 +191,7 @@ def log_changed_columns(table_fields, dataframe_fields):
         logging.info("- all column datatypes match")
     return changes_detected
 
-def overwrite_existing_table(df, iceberg_table, partition_field, partition_value, table_location):
+def overwrite_existing_table(df, iceberg_table, partition_field, table_location):
     logging.info("- iceberg.write.mode set to 'overwrite'")
     logging.info('- overwriting existing table')
 
@@ -174,7 +203,6 @@ def overwrite_existing_table(df, iceberg_table, partition_field, partition_value
     logging.info('- table overwritten!')
 
 def merge_into_existing_table(df, iceberg_table, partition_field, table_location):
-    logging.info('')
     logging.info(f"- appending to the existing table w/ schema evolution enabled (mergeSchema)")
 
     df.writeTo(iceberg_table) \

@@ -142,7 +142,7 @@ def populate_column(df, field, value, format):
     Returns:
         DataFrame: The DataFrame with the populated column.
     """
-    logging.info(f"Populating column '{field}' with value '{value}' using format '{format}'.")
+    logging.info(f"Populating column -> with value")
 
     # Define accepted formats
     date_format = 'yyyy/MM/dd'
@@ -151,7 +151,7 @@ def populate_column(df, field, value, format):
     # Apply the appropriate transformation based on the format
     if format == date_format:
         df = df.withColumn(field, to_date(lit(value), format))
-        logging.info(f"- Column '{field}' populated with date format '{date_format}'.")
+        logging.info(f" - column '{field}' populated with date format '{date_format}'.")
 
     elif format == timestamp_format:
         df = df.withColumn(field, to_timestamp(lit(value), format))

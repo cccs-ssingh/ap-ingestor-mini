@@ -51,8 +51,7 @@ def determine_files_to_process(azure_cfg, cfg_file):
     else:
         # Get all directories >= provided timeperiod
         logging.info('- catchup flag: ENABLED')
-        logging.info(f"- searching: '{azure_cfg['container']['input']['dir']}/...'")
-        logging.info(f"- for directories with timestamps >= to: '{azure_cfg['container']['input']['dir_timeperiod']}")
+        logging.info(f"- searching: '{azure_cfg['container']['input']['dir']}/...' for directories with timestamps >= to: '{azure_cfg['container']['input']['dir_timeperiod']}")
 
         directories_to_search = filter_directories_by_timeperiod(
             container_client,

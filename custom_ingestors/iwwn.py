@@ -14,6 +14,9 @@ def apply_custom_rules(df):
         if isinstance(df.schema[column].dataType, (ArrayType, StructType)):
             df = df.withColumn(column, to_json(df[column]))
         
+        elif column == "timeperiod_loaded_by":
+            continue
+        
         elif not isinstance(df.schema[column].dataType, StringType):
             df = df.withColumn(column, df[column].cast(StringType()))
     

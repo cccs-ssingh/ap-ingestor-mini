@@ -6,8 +6,7 @@ import importlib
 from .spark import read_data
 from .util_functions import seconds_to_hh_mm_ss
 from pyspark.sql.functions import to_date, lit, to_timestamp
-from dateutil.parser import parse
-from pyspark.sql.types import TimestampType
+from datetime import datetime
 
 
 # Retrieve the latest snapshot id for an Iceberg table
@@ -43,15 +42,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     # Manual adjustments
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
-    # Check if existing table exists
-    # existing_table_schema = check_if_table_exists(spark, iceberg_table)
-    # if existing_table_schema:
-    #     set_partition_format_to_timestamp_if_mismatch(existing_table_schema, cfg_iceberg)
-
     # Populate partition column
-    df = populate_column(df,
+    df = populate_partition_field(df,
         cfg_iceberg['partition']['field'],
-        cfg_iceberg['partition']['value'],
         cfg_iceberg['partition']['format']
     )
 
@@ -90,28 +83,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     spark.stop()
     logging.info(f"====================================")
 
-# def check_if_table_exists(spark, iceberg_table):
-#     logging.info(f"")
-#     logging.info(f"Checking if iceberge table exists: '{iceberg_table}'")
-#     if spark.catalog.tableExists(iceberg_table):
-#         logging.info(f"- table found!")
-#         return spark.table(iceberg_table).schema
-
-# def set_partition_format_to_timestamp_if_mismatch(existing_table_schema, cfg_iceberg):
-#     # If a specified partition column already exists in the table
-#     # ensure the format of the provided partition column matches
-#     # some tables are in yyyy/MM/dd format, and some are yyyy/MM/dd HH:mm:ss
-#
-#     timestamp_type_str = "yyyy/MM/dd HH:mm:ss"
-#     partition_field = next((field for field in existing_table_schema if field.name == cfg_iceberg['partition']['field']), None)
-#
-#     if partition_field and partition_field.dataType == TimestampType() and cfg_iceberg['partition']['format'] != timestamp_type_str:
-#         # Update partition format
-#         cfg_iceberg['partition']['format'] = timestamp_type_str
-#         logging.info(f"- partition column '{cfg_iceberg['partition']['field']}' exists with data type: {partition_field.dataType}")
-#         logging.info(f"- partition format provided: '{cfg_iceberg['partition']['format']}'")
-#         logging.info(f"-                updated to: '{timestamp_type_str}' to match table")
-
 def apply_custom_ingestor_rules(df, module_name):
     # Construct the full file path and check if it exists
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -139,14 +110,13 @@ def apply_custom_ingestor_rules(df, module_name):
     else:
         return df
 
-def populate_column(df, field, value, format):
+def populate_partition_field(df, field, format):
     """
     Populates a column in a DataFrame with a specified value using a given format.
 
     Args:
         df (DataFrame): The input DataFrame.
-        field (str): The name of the column to populate.
-        value (str): The value to populate the column with.
+        field (str): The name of the partition column to populate.
         format (str): The format of the value (e.g., 'yyyy/MM/dd' or 'yyyy/MM/dd HH:mm:ss').
 
     Returns:
@@ -159,22 +129,24 @@ def populate_column(df, field, value, format):
     format_date      = 'yyyy/MM/dd'
     format_timestamp = 'yyyy/MM/dd HH:mm:ss'
 
+    # Get the current time
+    timestamp_now = datetime.now().replace(minute=0, second=0, microsecond=0)
+
     # Apply the appropriate transformation based on the format
     if format == format_date:
-        df = df.withColumn(field, to_date(lit(value), format))
-        logging.info(f" - column '{field}' populated with value: {value} in format '{format_date}'.")
+        curr_date = timestamp_now.strftime("%Y/%m/%d")
+        df = df.withColumn(field, to_date(lit(curr_date), format))
+        logging.info(f" - column '{field}' populated with '{curr_date}' in format '{format_date}'.")
 
     elif format == format_timestamp:
-        date_obj = parse(value)
-        value = date_obj.strftime("%Y/%m/%d %H:%M:%S")
-        df = df.withColumn(field, to_timestamp(lit(value), format))
-        logging.info(f" - column '{field}' populated with value: {value} in format '{format_timestamp}'.")
+        curr_timestamp = timestamp_now.strftime("%Y/%m/%d %H:%M:%S")
+        df = df.withColumn(field, to_timestamp(lit(curr_timestamp), format))
+        logging.info(f" - column '{field}' populated with '{curr_timestamp}' in format '{format_timestamp}'.")
 
     else:
         raise ValueError(f"Invalid format '{format}'. Accepted formats are '{format_date}' and '{format_timestamp}'.")
 
     return df
-
 
 def create_new_iceberg_table(df, iceberg_table, table_location, partition_field):
     logging.info(f"- no existing table found")

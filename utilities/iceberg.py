@@ -130,17 +130,38 @@ def apply_custom_ingestor_rules(df, module_name):
         return df
 
 def populate_column(df, field, value, format):
-    logging.info(f"")
-    logging.info(f"Populating 'column' -> value")
-    logging.info(f"- '{field}' -> {value}")
+    """
+    Populates a column in a DataFrame with a specified value using a given format.
 
-    if format == 'yyyy/MM/dd':
+    Args:
+        df (DataFrame): The input DataFrame.
+        field (str): The name of the column to populate.
+        value (str): The value to populate the column with.
+        format (str): The format of the value (e.g., 'yyyy/MM/dd' or 'yyyy/MM/dd HH:mm:ss').
+
+    Returns:
+        DataFrame: The DataFrame with the populated column.
+    """
+    logging.info(f"Populating column '{field}' with value '{value}' using format '{format}'.")
+
+    # Define accepted formats
+    date_format = 'yyyy/MM/dd'
+    timestamp_format = 'yyyy/MM/dd HH:mm:ss'
+
+    # Apply the appropriate transformation based on the format
+    if format == date_format:
         df = df.withColumn(field, to_date(lit(value), format))
-    elif format == "yyyy/MM/dd HH:mm:ss":
-        df = df.withColumn(field, to_timestamp(lit(value), format))
+        logging.info(f"- Column '{field}' populated with date format '{date_format}'.")
 
-    logging.info(f"- populated")
+    elif format == timestamp_format:
+        df = df.withColumn(field, to_timestamp(lit(value), format))
+        logging.info(f"- Column '{field}' populated with timestamp format '{timestamp_format}'.")
+
+    else:
+        raise ValueError(f"Invalid format '{format}'. Accepted formats are '{date_format}' and '{timestamp_format}'.")
+
     return df
+
 
 def create_new_iceberg_table(df, iceberg_table, table_location, partition_field):
     logging.info(f"- no existing table found")

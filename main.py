@@ -15,14 +15,10 @@ def run(*args, **kwargs):
     files_to_process = determine_files_to_process(cfg['azure'], cfg['file'])
 
 
-    
-
-    for file in files_to_process:
-        # Create Spark session
-        spark = create_spark_session(cfg['iceberg']['table']['name'])
-        logging.info(f"ingesting file to iceberg: {file}")
-        # Ingest files into Iceberg table
-        ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, [file])
+    spark = create_spark_session(cfg['iceberg']['table']['name'])
+    logging.info(f"ingesting file to iceberg: {file}")
+    # Ingest files into Iceberg table
+    ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, files_to_process)
 
     
 

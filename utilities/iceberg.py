@@ -38,14 +38,14 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.debug(f"- {len(files_to_process)} files to process")
     df = read_data(spark, cfg_file, files_to_process)
 
-    # Manual adjustments
-    df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
-
     # Populate partition column
     df = populate_partition_field(df,
         cfg_iceberg['partition']['field'],
         cfg_iceberg['partition']['format']
     )
+    
+    # Manual adjustments
+    df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
     # Check if table exists
     logging.info(f"")

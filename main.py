@@ -16,7 +16,6 @@ def run(*args, **kwargs):
 
 
     spark = create_spark_session(cfg['iceberg']['table']['name'])
-    logging.info(f"ingesting file to iceberg: {file}")
     # Ingest files into Iceberg table
     ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, files_to_process)
 

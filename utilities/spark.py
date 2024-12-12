@@ -1,6 +1,5 @@
 import logging
 from pyspark.sql import SparkSession
-from pyspark.sql import DataFrame
 
 
 # Function to create Spark session with Iceberg
@@ -42,68 +41,45 @@ def log_spark_config(spark):
     logging.info("=======================================")
 
 # Read data based on the file type
-
 def read_data(spark, file_cfg, input_files):
     logging.info(f"Reading input data")
 
-    # Initialize an empty DataFrame
-    df = None
-    problematic_file = None
+    if file_cfg['type'] == "csv":
+        df = spark.read.option("header", "true").csv(input_files)
 
-    for file in input_files:
-        try:
-            logging.info(f"Processing file: {file}")
+    elif file_cfg['type'] == "parquet":
+        df = spark.read.parquet(input_files)
 
-            if file_cfg['type'] == "csv":
-                temp_df = spark.read.option("header", "true").csv(file)
+    elif file_cfg['type'] == "avro":
+        df = spark.read.format("avro").load(input_files)
 
-            elif file_cfg['type'] == "parquet":
-                temp_df = spark.read.parquet(file)
+    elif file_cfg['type'] == "json":
+        if file_cfg['json_multiline']:
+            logging.info(f"- json_multiline: {file_cfg['json_multiline']}")
+            df = spark.read.option("multiLine", "true").json(input_files)
+        else:
+            df = spark.read.json(input_files)
 
-            elif file_cfg['type'] == "avro":
-                temp_df = spark.read.format("avro").load(file)
+    # using databricks library
+    elif file_cfg['type'] == "xml":
+        if not file_cfg["xml_row_tag"]:
+            raise ValueError("For XML format, 'xml_row_tag' must be provided.")
 
-            elif file_cfg['type'] == "json":
-                if file_cfg['json_multiline']:
-                    logging.info(f"- json_multiline: {file_cfg['json_multiline']}")
-                    temp_df = spark.read.option("multiLine", "true").json(file)
-                else:
-                    temp_df = spark.read.json(file)
+        logging.info(f"- xml_row_tag: '{file_cfg['xml_row_tag']}'")
 
-            elif file_cfg['type'] == "xml":
-                if not file_cfg["xml_row_tag"]:
-                    raise ValueError("For XML format, 'xml_row_tag' must be provided.")
+        # XML library takes in a XML direcotry, not a file list so we just parse it out
+        first_file = input_files[0]
+        input_dir = first_file.rsplit('/', 1)[0]
 
-                logging.info(f"- xml_row_tag: '{file_cfg['xml_row_tag']}'")
+        df = (
+            spark.read.format("xml")
+            .option("rowTag", file_cfg["xml_row_tag"])
+            .load(f"{input_dir}/*.xml")
+        )
 
-                input_dir = file.rsplit('/', 1)[0]
-
-                temp_df = (
-                    spark.read.format("xml")
-                    .option("rowTag", file_cfg["xml_row_tag"])
-                    .load(f"{input_dir}/*.xml")
-                )
-
-            else:
-                raise ValueError(f"Unsupported file type: {file_cfg['type']}")
-
-            # Check if the DataFrame is empty
-            if temp_df.head(1):
-                if df is None:
-                    df = temp_df
-                else:
-                    df = df.unionByName(temp_df, allowMissingColumns=True)
-
-        except Exception as e:
-            logging.error(f"Error processing file: {file}")
-            logging.error(e)
-            problematic_file = file
-            break
-
-    if problematic_file:
-        logging.info(f"Problematic file: {problematic_file}")
     else:
-        logging.info(f"- successfully read data!")
+        raise ValueError(f"Unsupported file type: {file_cfg['type']}")
 
+    logging.info(f"- successfully read data!")
     return df
 

@@ -21,7 +21,7 @@ def parse_cmd_line_args(args, kwargs):
     arg_parser.add_argument('--iceberg_namespace', required=True, help="Target Iceberg namespace name")
     arg_parser.add_argument('--iceberg_table', required=True, help="Target Iceberg table name")
     arg_parser.add_argument('--iceberg_partition_field', default="timeperiod_loaded_by", help="Column to partition with")
-    arg_parser.add_argument('--iceberg_partition_format', required=True, help="partitioning format", choices=['yyyy/MM/dd', 'yyyy/MM/dd HH:00:00'])
+    arg_parser.add_argument('--iceberg_partition_format', required=True, help="partitioning format: yyyy/MM/dd or yyyy/MM/dd HH:mm:ss")
     arg_parser.add_argument('--iceberg_write_mode', default="append", help="spark write mode: append w/ mergeSchema or overwrite", choices=['append', 'overwrite'])
 
     # File Specific details

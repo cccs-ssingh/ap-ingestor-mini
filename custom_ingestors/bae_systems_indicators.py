@@ -6,7 +6,7 @@ from pyspark.sql.types import *
 def apply_custom_rules(df):
     
     # Get all sub-fields from Event
-    df = df.select("Event.*")
+    df = df.select("Event.*", "timeperiod_loaded_by")
     
     # Convert all columns into StringType
     for column in df.columns:

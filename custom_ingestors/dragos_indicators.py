@@ -1,3 +1,4 @@
+import logging
 import pyspark.sql.functions as f
 
 
@@ -11,6 +12,7 @@ def apply_custom_rules(df):
     df = df.filter(f.col("type") == "indicator")
 
     if 'abstract' not in df.columns:
+        logging.info("- adding column 'abstract'")
         df = df.withColumn('abstract', f.lit(None))
 
     return df

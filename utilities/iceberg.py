@@ -43,9 +43,11 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
         cfg_iceberg['partition']['field'],
         cfg_iceberg['partition']['format']
     )
+    df.printSchema()
     
     # Manual adjustments
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
+    df.printSchema()
 
     # Check if table exists
     logging.info(f"")
@@ -208,11 +210,11 @@ def merge_into_existing_table(df, iceberg_table, partition_field, table_location
     df.writeTo(iceberg_table) \
         .tableProperty("location", table_location) \
         .option("mergeSchema", "true") \
-        .option("check-ordering", "false") \
         .partitionedBy(partition_field) \
         .append()
 
     logging.info('- appended!')
+#             .option("check-ordering", "false") \
 
 def log_metrics(df, start_time):
     elapsed_time = seconds_to_hh_mm_ss(time.time() - start_time)

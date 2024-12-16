@@ -10,4 +10,7 @@ def apply_custom_rules(df):
     df = df.select("objects.*")
     df = df.filter(f.col("type") == "indicator")
 
+    if 'abstract' not in df.columns:
+        df = df.withColumn('abstract', f.lit(None))
+
     return df

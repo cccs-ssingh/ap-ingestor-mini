@@ -11,7 +11,7 @@ def create_spark_session(app_name):
         .appName(f"APA4b Ingestor-Mini: {app_name}") \
         .config("spark.ui.showConsoleProgress", "false") \
         .config("spark.sql.debug.maxToStringFields", "100") \
-        .config("spark.sql.caseSensitive", "false")
+        .config("spark.sql.caseSensitive", "true")
 
     spark = spark_builder.getOrCreate()
     log_spark_config(spark)

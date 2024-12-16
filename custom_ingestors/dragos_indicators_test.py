@@ -12,9 +12,9 @@ def apply_custom_rules(df):
     df = df.filter(f.col("type") == "indicator")
 
     for col_name in ['abstract', 'aliases']:
-    if col_name not in df.columns:
-        logging.info(f"- column '{col_name}' required but missing in dataframe")
-        logging.info(f" - adding empty column with Null values to match Schema")
-        df = df.withColumn('abstract', f.lit(None))
+        if col_name not in df.columns:
+            logging.info(f"- column '{col_name}' required but missing in dataframe")
+            logging.info(f" - adding empty column with Null values to match Schema")
+            df = df.withColumn(col_name, f.lit(None))
 
     return df

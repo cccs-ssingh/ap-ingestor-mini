@@ -67,8 +67,9 @@ python3 main.py \
   --file_type <file type> \
   --iceberg_partition_format <iceberg partition format> \
   --iceberg_catalog <destination catalog> \
-  --iceberg_namespace <destination namespace>\
-  --iceberg_table <destination iceberg table>
+  --iceberg_namespace <destination namespace> \
+  --iceberg_table <destination iceberg table> \
+  --iceberg_partition_field <iceberg column>
 ```
 ```bash
 python3 main.py \

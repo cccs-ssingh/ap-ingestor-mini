@@ -77,9 +77,9 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
                 cfg_iceberg['partition']['field'],
                 cfg_iceberg['table']['location']
             )
+
     # End Spark Session
     log_metrics(df, start_time)
-
     spark.stop()
     logging.info(f"====================================")
 

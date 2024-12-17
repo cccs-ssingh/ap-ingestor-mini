@@ -99,7 +99,7 @@ def apply_custom_ingestor_rules(df, module_name):
             module = importlib.import_module(f"custom_ingestors.{module_name}")
             # Check if the function apply_custom_rules exists in the module
             if hasattr(module, "apply_custom_rules"):
-                logging.info(" - applying custom rules to df")
+                logging.info("- applying custom rules to df")
                 df = module.apply_custom_rules(df)  # Pass df to the function if needed
                 return df
             else:

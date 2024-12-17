@@ -35,10 +35,10 @@ def log_spark_config(spark):
     logging.info(f"    Executor Cores: {conf.get('spark.executor.cores', 'Not Set')}")
     logging.info(f"Executor Instances: {conf.get('spark.executor.instances', 'Not Set')}")
     logging.info(f"         Cores MAX: {conf.get('spark.cores.max', 'Not Set')}")
-    logging.info(f"   Shuffle Service: {conf.get('spark.shuffle.service.enabled', 'Not Set')}")
-    logging.info(f"Dynamic Allocation: {conf.get('spark.dynamicAllocation.enabled', 'Not Set')}")
-    logging.info(f"   Memory Fraction: {conf.get('spark.memory.fraction', 'Not Set')}")
-    logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
+    # logging.info(f"   Shuffle Service: {conf.get('spark.shuffle.service.enabled', 'Not Set')}")
+    # logging.info(f"Dynamic Allocation: {conf.get('spark.dynamicAllocation.enabled', 'Not Set')}")
+    # logging.info(f"   Memory Fraction: {conf.get('spark.memory.fraction', 'Not Set')}")
+    # logging.info(f"Shuffle Partitions: {conf.get('spark.sql.shuffle.partitions', 'Not Set')}")
     logging.info("=======================================")
 
 # Read data based on the file type
@@ -59,7 +59,7 @@ def read_data(spark, file_cfg, input_files):
     elif file_cfg['type'] == "avro":
         df = spark.read.format("avro").load(input_files)
 
-    elif file_cfg['type'] == "json":
+    elif file_cfg['type'] == "json" or file_cfg['type'] == "stix":
         if file_cfg['json_multiline']:
             logging.info(f"- json_multiline: {file_cfg['json_multiline']}")
             df = spark.read.option("multiLine", "true").json(input_files)

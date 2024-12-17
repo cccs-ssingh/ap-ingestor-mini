@@ -46,7 +46,6 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     
     # Manual adjustments
     df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
-    df.printSchema()
 
     # Check if table exists
     logging.info(f"")

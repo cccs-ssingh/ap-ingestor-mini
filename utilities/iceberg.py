@@ -77,12 +77,11 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
                 cfg_iceberg['partition']['field'],
                 cfg_iceberg['table']['location']
             )
-
-    log_metrics(df, start_time)
     # End Spark Session
+    log_metrics(df, start_time)
+
     spark.stop()
     logging.info(f"====================================")
-    
 
 def apply_custom_ingestor_rules(df, module_name):
     # Construct the full file path and check if it exists

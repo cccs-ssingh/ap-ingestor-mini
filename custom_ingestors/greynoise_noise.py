@@ -1,20 +1,16 @@
-from pyspark.sql.functions import col, from_utc_timestamp, date_format
+from pyspark.sql.functions import col, to_timestamp, explode
 
 
 def apply_custom_rules(df):
-    # Assuming we want to work with the first element of the 'temporal_data' array:
-    df = df.withColumn(
-        "raw_data.temporal_data.element.window.end",
-        date_format(
-            from_utc_timestamp(
-                col("raw_data.temporal_data")
-                .getItem(0)
-                .getField("window")
-                .getField("end"),
-                "America/Toronto",
-            ),
-            "yyyy-MM-dd HH:mm:ss",
-        ),
+    df_exploded = df.withColumn(
+        "temporal_data_exploded", explode(col("raw_data.temporal_data"))
     )
 
-    return df
+    df_transformed = df_exploded.withColumn(
+        "raw_data.temporal_data.element.window.end",
+        to_timestamp(col("temporal_data_exploded.window.end")),
+    )
+
+    df_final = df_transformed.drop("temporal_data_exploded")
+
+    return df_final

@@ -57,6 +57,8 @@ Prior to development, please run the following:
 
 ```bash
 python -m pip install -r requirements.txt 
+python -m pip install -r requirements-dev.txt
+pre-commit install
 ```
 
 After, execute the datafeed (with an example):

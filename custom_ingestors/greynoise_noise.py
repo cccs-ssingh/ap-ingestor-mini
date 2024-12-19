@@ -1,4 +1,4 @@
-from pyspark.sql.functions import col, to_timestamp, explode, struct
+from pyspark.sql.functions import col, to_timestamp, explode, struct, array
 
 
 def apply_custom_rules(df):
@@ -13,12 +13,14 @@ def apply_custom_rules(df):
 
     df_final = df_transformed.withColumn(
         "raw_data.temporal_data",
-        struct(
-            col("temporal_data_exploded.scan").alias("scan"),
+        array(
             struct(
-                col("temporal_data_exploded_window_end").alias("end"),
-                col("temporal_data_exploded.window.start").alias("start"),
-            ).alias("window"),
+                col("temporal_data_exploded.scan").alias("scan"),
+                struct(
+                    col("temporal_data_exploded_window_end").alias("end"),
+                    col("temporal_data_exploded.window.start").alias("start"),
+                ).alias("window"),
+            )
         ),
     )
 

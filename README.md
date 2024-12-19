@@ -36,7 +36,9 @@ SpellbookSparkLabsOperator(
         "--iceberg_catalog", "hogwarts_u",
         "--iceberg_namespace", "test", 
         "--iceberg_table", "<feed>'", # CHANGE
-        "--iceberg_partition_format", "yyyy/MM/dd", # CHANGE
+        "--iceberg_partition_format", "yyyy/MM/dd HH:mm:ss", # CHANGE
+        "--iceberg_partition_field", "<column>" # CHANGE
+
 
         # Add more based on the datafeed
     ],
@@ -56,18 +58,20 @@ Prior to development, please run the following:
 ```bash
 python -m pip install -r requirements.txt 
 python -m pip install -r requirements-dev.txt
+pre-commit install
 ```
 
 After, execute the datafeed (with an example):
 ```bash
 python3 main.py \
-  --azure_container_input_dir <azure container input directory>\
+  --azure_container_input_dir <azure container input directory> \
   --timeperiod_to_process "<time period to process>" \
   --file_type <file type> \
   --iceberg_partition_format <iceberg partition format> \
   --iceberg_catalog <destination catalog> \
-  --iceberg_namespace <destination namespace>\
-  --iceberg_table <destination iceberg table>
+  --iceberg_namespace <destination namespace> \
+  --iceberg_table <destination iceberg table> \
+  --iceberg_partition_field <iceberg column>
 ```
 ```bash
 python3 main.py \

@@ -24,10 +24,6 @@ def apply_custom_rules(df):
 
     df_grouped = df_transformed.groupBy(
         *[col for col in df.columns if col != "raw_data.temporal_data"]
-    ).agg(collect_list("temporal_data_exploded").alias("temporal_data"))
+    ).agg(collect_list("temporal_data_exploded").alias("raw_data.temporal_data"))
 
-    df_final = df_grouped.withColumn(
-        "raw_data.temporal_data", col("temporal_data")
-    ).drop("temporal_data")
-
-    return df_final
+    return df_grouped

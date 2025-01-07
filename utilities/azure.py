@@ -72,7 +72,9 @@ def determine_files_to_process(azure_cfg, cfg_file):
         logging.warning("")
         logging.warning("No files to be processed. Marking as Skip")
         logging.warning("")
-        raise SystemExit(99)
+        # raise SystemExit(99)
+        with open("/dev/termination-log", "w") as file:
+            file.write("skip")
 
     return azure_blob_urls_filtered
 

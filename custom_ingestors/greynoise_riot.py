@@ -1,6 +1,7 @@
-from pyspark.sql.functions import to_json, col
+from pyspark.sql.functions import to_json, col, to_timestamp
 
 def apply_custom_rules(df):
-    df = df.withColumn("temporal_data_string", to_json(col("raw_data.temporal_data")))
+    
+    df = df.withColumn("scan_time", to_timestamp("scan_time"))
     
     return df

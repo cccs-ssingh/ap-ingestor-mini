@@ -31,9 +31,10 @@ def get_latest_snapshot_id(spark, iceberg_table):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info("")
-    logging.debug(f"- {len(files_to_process)} files to process")
+    logging.info(f"- {len(files_to_process)} files to process")
 
     for file in files_to_process:
+        logging.info(f"Processing file: {file}")
         try:
             # Start timing
             start_time = time.time()
@@ -72,10 +73,8 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
                         cfg_iceberg['partition']['field'],
                         cfg_iceberg['table']['location'],
                     )
-
                 else:
                     # Append mode
-                    # log_new_columns(spark, df, iceberg_table)
                     merge_into_existing_table(df, iceberg_table,
                         cfg_iceberg['partition']['field'],
                         cfg_iceberg['table']['location']
@@ -86,6 +85,7 @@ def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
 
         except exception as e:
             logging.error(f'failed processing file: {file}')
+            logging.error(e)
 
 
 def apply_custom_ingestor_rules(df, module_name):

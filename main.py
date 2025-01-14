@@ -20,5 +20,9 @@ def run(*args, **kwargs):
     # Ingest files into Iceberg table
     ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, files_to_process)
 
+    # End Spark Session
+    spark.stop()
+    logging.info(f"====================================")
+
 if __name__ == "__main__":
     run()

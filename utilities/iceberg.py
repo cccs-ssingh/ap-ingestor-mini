@@ -2,6 +2,7 @@ import logging
 import time
 import os, sys
 import importlib
+from logging import exception
 
 from .spark import read_data
 from .util_functions import seconds_to_hh_mm_ss
@@ -30,58 +31,62 @@ def get_latest_snapshot_id(spark, iceberg_table):
 # Function to ingest raw data into an Iceberg table dynamically
 def ingest_to_iceberg(cfg_iceberg, cfg_file, spark, files_to_process):
     logging.info("")
-
-    # Start timing
-    start_time = time.time()
-
-    # Read the data based on the file type
     logging.debug(f"- {len(files_to_process)} files to process")
-    df = read_data(spark, cfg_file, files_to_process)
 
-    # Populate partition column
-    df = populate_partition_field(df,
-        cfg_iceberg['partition']['field'],
-        cfg_iceberg['partition']['format']
-    )
-    
-    # Manual adjustments
-    df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
+    for file in files_to_process:
+        try:
+            # Start timing
+            start_time = time.time()
 
-    # Check if table exists
-    logging.info(f"")
-    iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
-    logging.info(f"Checking if iceberg table exists: '{iceberg_table}'")
+            # Read the data based on the file type
+            df = read_data(spark, cfg_file, [file])
 
-    # Write the dataframe
-    if not spark.catalog.tableExists(iceberg_table):
-        # New Iceberg table
-        create_new_iceberg_table(df, iceberg_table,
-            cfg_iceberg['table']['location'],
-            cfg_iceberg['partition']['field']
-        )
-    else:
-        # Existing Iceberg Table
-        logging.info(f"- table found!")
-
-        if cfg_iceberg['write_mode'] == 'overwrite':
-            # Overwrite mode
-            overwrite_existing_table(df, iceberg_table,
+            # Populate partition column
+            df = populate_partition_field(df,
                 cfg_iceberg['partition']['field'],
-                cfg_iceberg['table']['location'],
+                cfg_iceberg['partition']['format']
             )
 
-        else:
-            # Append mode
-            # log_new_columns(spark, df, iceberg_table)
-            merge_into_existing_table(df, iceberg_table,
-                cfg_iceberg['partition']['field'],
-                cfg_iceberg['table']['location']
-            )
+            # Manual adjustments
+            df = apply_custom_ingestor_rules(df, cfg_iceberg['table']['name'])
 
-    # End Spark Session
-    log_metrics(df, start_time)
-    spark.stop()
-    logging.info(f"====================================")
+            # Check if table exists
+            logging.info(f"")
+            iceberg_table = f"{cfg_iceberg['catalog']}.{cfg_iceberg['namespace']}.{cfg_iceberg['table']['name']}"
+            logging.info(f"Checking if iceberg table exists: '{iceberg_table}'")
+
+            # Write the dataframe
+            if not spark.catalog.tableExists(iceberg_table):
+                # New Iceberg table
+                create_new_iceberg_table(df, iceberg_table,
+                    cfg_iceberg['table']['location'],
+                    cfg_iceberg['partition']['field']
+                )
+            else:
+                # Existing Iceberg Table
+                logging.info(f"- table found!")
+
+                if cfg_iceberg['write_mode'] == 'overwrite':
+                    # Overwrite mode
+                    overwrite_existing_table(df, iceberg_table,
+                        cfg_iceberg['partition']['field'],
+                        cfg_iceberg['table']['location'],
+                    )
+
+                else:
+                    # Append mode
+                    # log_new_columns(spark, df, iceberg_table)
+                    merge_into_existing_table(df, iceberg_table,
+                        cfg_iceberg['partition']['field'],
+                        cfg_iceberg['table']['location']
+                    )
+
+            # End Spark Session
+            log_metrics(df, start_time)
+
+        except exception as e:
+            logging.error(f'failed processing file: {file}')
+
 
 def apply_custom_ingestor_rules(df, module_name):
     # Construct the full file path and check if it exists

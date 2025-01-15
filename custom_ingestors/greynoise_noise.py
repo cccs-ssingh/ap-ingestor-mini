@@ -9,12 +9,15 @@ def apply_custom_rules(df):
 
     logging.info(f"casting column: {old_col} -> string with new col name: {new_col}")
 
+    # Convert col to a JSON string and put it in new column
     df = df.withColumn(
         "raw_data.temporal_data_str",  # New column name
-        # Convert col to a JSON string and put it in new column
-        to_json(
-            col("raw_data.temporal_data"))
-    ).drop("raw_data.temporal_data")  # drop original column
+        to_json(col("raw_data.temporal_data"))
+    )
+
+    logging.info('dropping original column: raw_data.temporal_data')
+    df.drop("raw_data.temporal_data")
+    df.printSchema()
 
     # df = df.withColumn(
     #     "raw_data.temporal_data_str",

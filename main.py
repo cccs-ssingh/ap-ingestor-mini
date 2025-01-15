@@ -19,11 +19,13 @@ def run(*args, **kwargs):
 
     for file in files_to_process:
         try:
-            logging.info(f' processing file: {file}')
+            logging.info(f'------processing file ------')
+            logging.info(f'{file}')
             # Ingest files into Iceberg table
             ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, [file])
+            logging.info('------SUCCESS------')
         except Exception as e:
-            logging.error('FAILED')
+            logging.error('------FAILED------')
             logging.error(e)
 
     # End Spark Session

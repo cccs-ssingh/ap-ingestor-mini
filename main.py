@@ -17,8 +17,14 @@ def run(*args, **kwargs):
     # Create Spark session
     spark = create_spark_session(cfg['iceberg']['table']['name'])
 
-    # Ingest files into Iceberg table
-    ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, files_to_process)
+    for file in files_to_process:
+        try:
+            logging.info(f' processing file: {file}')
+            # Ingest files into Iceberg table
+            ingest_to_iceberg(cfg['iceberg'], cfg['file'], spark, [file])
+        except Exception as e:
+            logging.error('FAILED')
+            logging.error(e)
 
     # End Spark Session
     spark.stop()

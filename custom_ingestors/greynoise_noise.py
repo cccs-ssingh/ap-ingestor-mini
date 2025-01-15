@@ -1,6 +1,6 @@
 import logging
 
-from pyspark.sql.functions import col, to_json, when
+from pyspark.sql.functions import col, to_json, when, from_json, ArrayType, StringType
 
 def apply_custom_rules(df):
 
@@ -16,15 +16,23 @@ def apply_custom_rules(df):
     #     )
     # )
 
+    # df = df.withColumn(
+    #     "raw_data.temporal_data_str",
+    #     when(
+    #         col("raw_data.temporal_data").isNotNull(),
+    #         to_json(
+    #             col("raw_data.temporal_data")
+    #         )
+    #     )
+    #     .otherwise('[]')  # default empty array or a specific string in case of null
+    # )
+
     df = df.withColumn(
         "raw_data.temporal_data_str",
-        when(
-            col("raw_data.temporal_data").isNotNull(),
-            to_json(
-                col("raw_data.temporal_data")
-            )
+        from_json(
+            col("raw_data.temporal_data").cast("string"),
+            ArrayType(StringType(), True)
         )
-        .otherwise('[]')  # default empty array or a specific string in case of null
     )
 
     return df

@@ -1,7 +1,13 @@
-from pyspark.sql.functions import to_json, col
+from pyspark.sql.functions import col, when
 
 def apply_custom_rules(df):
-    # Explode the nested list to handle individual elements
-    df = df.withColumn("temporal_data", to_json(col("raw_data.temporal_data")))
+
+    df = df.withColumn(
+        "raw_data.temporal_data_str",
+        when(
+            col("raw_data.temporal_data").isNotNull(),
+            col("raw_data.temporal_data").cast("string")
+        ).otherwise(None)
+    )
 
     return df

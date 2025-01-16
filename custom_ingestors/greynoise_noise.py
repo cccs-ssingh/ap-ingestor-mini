@@ -16,7 +16,11 @@ def apply_custom_rules(df):
             F.col("raw_data.hassh"),  # Keep existing fields
             F.col("raw_data.ja3"),  # Keep existing fields
             F.col("raw_data.scan"),  # Keep existing fields
-            F.to_json(F.col("raw_data.temporal_data")).alias("temporal_data_str"),  # Convert temporal_data to string
+            # Conditionally apply to_json if temporal_data is a struct/array
+            F.when(
+                F.col("raw_data.temporal_data").cast("string").isNotNull(),
+                F.col("raw_data.temporal_data")  # Keep as string if it's already a string
+            ).otherwise(F.to_json(F.col("raw_data.temporal_data"))).alias("temporal_data_str"),
             F.col("raw_data.web")  # Keep existing fields
         )
     )

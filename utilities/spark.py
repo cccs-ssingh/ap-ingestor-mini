@@ -66,7 +66,7 @@ def read_data(spark, file_cfg, input_files):
         else:
             df = (
                 spark.read
-                .option("inferSchema", "true")
+                # .option("inferSchema", "true")
                 .option("inferTimestamp", "true")
                 .json(input_files)
             )

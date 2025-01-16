@@ -64,7 +64,7 @@ def read_data(spark, file_cfg, input_files):
             logging.info(f"- json_multiline: {file_cfg['json_multiline']}")
             df = spark.read.option("multiLine", "true").json(input_files)
         else:
-            df = spark.read.json(input_files)
+            df = spark.read.option("inferSchema", "true").json(input_files)
 
     elif file_cfg['type'] == "xml":  # uses databricks library
         if not file_cfg["xml_row_tag"]:

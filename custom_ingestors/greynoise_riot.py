@@ -1,4 +1,4 @@
-from pyspark.sql.functions import to_json, col, to_timestamp
+from pyspark.sql.functions import to_timestamp
 
 def apply_custom_rules(df):
 

@@ -3,68 +3,26 @@ import logging
 from pyspark.sql import functions as F
 
 def apply_custom_rules(df):
+    from pyspark.sql import functions as F
 
-    old_col = "raw_data.temporal_data"
-    new_col = "raw_data.temporal_data_str"
+    # Get the schema of the 'raw_data' struct
+    raw_data_fields = [field.name for field in df.schema["raw_data"].dataType.fields]
 
-    logging.info(f"casting column: {old_col} -> string with new col name: {new_col}")
+    # Dynamically create a list of expressions for all fields in 'raw_data'
+    # Replace 'temporal_data' with 'temporal_data_str' in the field list
+    updated_fields = [
+        F.col(f"raw_data.{field}").alias("temporal_data_str") if field == "temporal_data" else F.col(
+            f"raw_data.{field}")
+        for field in raw_data_fields
+    ]
 
-    # Convert 'temporal_data' to a string (JSON) and add it as a new field 'temporal_data_str' in raw_data
-    df = df.withColumn(
+    # Create the new 'raw_data' struct with the updated fields
+    df_new = df.withColumn(
         "raw_data",  # Modify the raw_data struct
-        F.struct(
-            # Keep existing fields
-            F.col("raw_data.hassh"),
-            F.col("raw_data.ja3"),
-            F.col("raw_data.scan"),
-            F.col("raw_data.web"),
-            F.col("raw_data.temporal_data").alias("temporal_data_str"),
-        )
+        F.struct(*updated_fields)  # Pass the list of updated fields
     )
 
-    # Optionally, drop the original 'raw_data.temporal_data' field if no longer needed
-    df = df.withColumn(
-        "raw_data",
-        F.struct(
-            F.col("raw_data.hassh"),
-            F.col("raw_data.ja3"),
-            F.col("raw_data.scan"),
-            F.col("raw_data.web"),
-            F.col("raw_data.temporal_data_str")
-    ))
-
-
-    # Show the schema to check the result
-    df.printSchema()
-
-    # # Convert col to a JSON string and put it in new column
-    # df = df.withColumn(
-    #     "raw_data.temporal_data_str",  # New column name
-    #     to_json(col("raw_data.temporal_data"))
-    # )
-
-
-    # df = df.withColumn(
-    #     "raw_data.temporal_data_str",
-    #     when(
-    #         col("raw_data.temporal_data").isNotNull(),
-    #         to_json(
-    #             col("raw_data.temporal_data")
-    #         )
-    #     )
-    #     .otherwise('[]')  # default empty array or a specific string in case of null
-    # )
-
-    # df = df.withColumn(
-    #     "raw_data.temporal_data_str",
-    #     from_json(
-    #         col("raw_data.temporal_data").cast("string"),
-    #         ArrayType(StringType(), True)
-    #     )
-    # )
-
-    # logging.info('dropping original column: raw_data.temporal_data')
-    # df.drop("raw_data.temporal_data")
-    df.printSchema()
+    # # Check the updated schema to verify the change
+    # df_new.printSchema()
 
     return df

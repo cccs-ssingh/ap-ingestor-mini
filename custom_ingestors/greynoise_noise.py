@@ -1,9 +1,9 @@
 import logging
-
 from pyspark.sql import functions as F
 
 def apply_custom_rules(df):
-    from pyspark.sql import functions as F
+
+    logging.info("- replacing field raw_data.temporal_data -> raw_data.temporal_data_str")
 
     # Get the schema of the 'raw_data' struct
     raw_data_fields = [field.name for field in df.schema["raw_data"].dataType.fields]
@@ -18,11 +18,8 @@ def apply_custom_rules(df):
 
     # Create the new 'raw_data' struct with the updated fields
     df = df.withColumn(
-        "raw_data",  # Modify the raw_data struct
+        "raw_data",                # Modify the raw_data struct
         F.struct(*updated_fields)  # Pass the list of updated fields
     )
-
-    # # Check the updated schema to verify the change
-    # df.printSchema()
 
     return df

@@ -17,12 +17,12 @@ def apply_custom_rules(df):
     ]
 
     # Create the new 'raw_data' struct with the updated fields
-    df_new = df.withColumn(
+    df = df.withColumn(
         "raw_data",  # Modify the raw_data struct
         F.struct(*updated_fields)  # Pass the list of updated fields
     )
 
     # # Check the updated schema to verify the change
-    # df_new.printSchema()
+    # df.printSchema()
 
     return df
